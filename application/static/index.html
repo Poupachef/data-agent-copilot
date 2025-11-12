@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Web Clone</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-screen">
+        <div class="login-container">
+            <div class="login-header">
+                <div class="whatsapp-logo">
+                    <i class="fab fa-whatsapp"></i>
+                    <span>WhatsApp</span>
+                </div>
+            </div>
+            
+            <div class="login-card">
+                <div class="login-content">
+                    <h2>Conectar ao WhatsApp</h2>
+                    
+                    <div class="phone-input-container">
+                        <input type="text" id="main-phone-input" placeholder="Digite seu número de telefone (ex: 5511999999999)" class="phone-input" required>
+                    </div>
+                    
+                    <!-- Session Management -->
+                    <div id="session-management" class="session-management" style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                        <h4 style="margin: 0 0 15px 0; color: #333; display: flex; align-items: center;">
+                            <i class="fas fa-cogs" style="margin-right: 8px;"></i>
+                            Gerenciamento de Sessão
+                        </h4>
+                        
+                        <div class="session-actions" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px;">
+                            <button id="create-session-btn" class="btn btn-success" style="flex: 1; min-width: 120px;">
+                                <i class="fas fa-plus"></i>
+                                Criar Sessão
+                            </button>
+                            <button id="delete-session-btn" class="btn btn-danger" style="flex: 1; min-width: 120px;">
+                                <i class="fas fa-trash"></i>
+                                Deletar Sessão
+                            </button>
+                            <button id="refresh-session-btn" class="btn btn-info" style="flex: 1; min-width: 120px;">
+                                <i class="fas fa-sync-alt"></i>
+                                Atualizar
+                            </button>
+                        </div>
+                        
+                        <div id="session-status" class="session-status" style="font-size: 14px; color: #666;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                <span>Status da Sessão:</span>
+                                <span id="current-session-status" style="font-weight: bold; color: #333;">Verificando...</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span>Sessão Ativa:</span>
+                                <span id="active-session-name" style="font-weight: bold; color: #333;">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Session Status and Controls -->
+                    <div id="session-controls" class="session-controls" style="display: none; margin: 15px 0; padding: 15px; background: #f5f5f5; border-radius: 8px; border: 1px solid #ddd;">
+                        <h4 style="margin: 0 0 10px 0; color: #333;">Status da Sessão</h4>
+                        
+                        <div id="session-info" class="session-info" style="margin-bottom: 15px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <span style="font-weight: bold;">Status:</span>
+                                <span id="session-state" style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Desconhecido</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <span style="font-weight: bold;">Usuário:</span>
+                                <span id="session-user" style="font-size: 14px;">-</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-weight: bold;">Engine:</span>
+                                <span id="session-engine" style="font-size: 14px;">-</span>
+                            </div>
+                        </div>
+                        
+                        <div class="session-actions" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button id="start-session-btn" class="btn btn-success" style="flex: 1; min-width: 100px;">
+                                <i class="fas fa-play"></i>
+                                Start
+                            </button>
+                            <button id="stop-session-btn" class="btn btn-warning" style="flex: 1; min-width: 100px;">
+                                <i class="fas fa-stop"></i>
+                                Stop
+                            </button>
+                            <button id="generate-qr-btn" class="btn btn-primary" style="flex: 1; min-width: 100px;">
+                                <i class="fas fa-qrcode"></i>
+                                QR Code
+                            </button>
+                            <button id="show-chat-btn" class="btn btn-info" style="flex: 1; min-width: 100px;">
+                                <i class="fas fa-comments"></i>
+                                Chat
+                            </button>
+                        </div>
+                    </div>
+                    
+
+                    
+                    <div id="qr-container" class="qr-container">
+                        <div id="qr-code" class="qr-code">
+                            <!-- QR Code will be inserted here -->
+                        </div>
+                        <div id="qr-loading" class="qr-loading">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                    
+
+                    
+
+                    
+                    <div id="code-input-container" class="code-input-container" style="display: none;">
+                        <button id="submit-code-btn" class="btn btn-primary">Entrar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Chat Interface -->
+    <div id="chat-interface" class="chat-interface" style="display: none;">
+        <!-- Header -->
+        <div class="chat-header">
+            <div class="header-left">
+                <div class="user-avatar">
+                    <img id="user-avatar" src="https://via.placeholder.com/40" alt="Avatar">
+                </div>
+                <div class="user-info">
+                    <h3 id="user-name">WhatsApp Web</h3>
+                    <span id="connection-status" class="status-text">Conectado</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <div id="debug-area" class="debug-area" style="margin-right: 20px;">
+                    <div id="ws-status" class="ws-status">🔴 WebSocket</div>
+                    <div id="event-counter" class="event-counter">0 eventos</div>
+                    <div id="last-event" class="last-event">Aguardando...</div>
+                </div>
+                <button id="logout-btn" class="header-btn" title="Sair">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="chat-main">
+            <!-- Left Navigation Bar -->
+            <div class="left-nav">
+                <div class="nav-header">
+                    <div class="user-avatar">
+                        <img src="https://via.placeholder.com/40" alt="Avatar" id="user-avatar">
+                    </div>
+                </div>
+                <div class="nav-buttons">
+                    <button id="chats-btn" class="nav-btn active" title="Conversas">
+                        <i class="fas fa-comment"></i>
+                    </button>
+                    <button id="contacts-btn" class="nav-btn" title="Contatos">
+                        <i class="fas fa-address-book"></i>
+                    </button>
+                    <button class="nav-btn" title="Status">
+                        <i class="fas fa-circle-notch"></i>
+                    </button>
+                    <button class="nav-btn" title="Canais">
+                        <i class="fas fa-bullhorn"></i>
+                    </button>
+                    <button id="session-settings-btn" class="nav-btn" title="Configurações da Sessão">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Sidebar -->
+            <div class="chat-sidebar">
+                <div class="sidebar-header">
+                    <h2 id="sidebar-title">Conversas</h2>
+                    <div class="sidebar-actions">
+                        <button id="sync-chats-btn" class="sidebar-btn" title="Sincronizar chats">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                        <button class="sidebar-btn" title="Nova conversa">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="sidebar-btn" title="Menu">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="search-container">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="search-input" placeholder="Pesquisar ou começar uma nova conversa">
+                    </div>
+                </div>
+                
+                <div class="chat-list" id="chat-list">
+                    <!-- Chat items will be inserted here -->
+                </div>
+            </div>
+
+            <!-- Chat Area -->
+            <div class="chat-area">
+                <div id="no-chat-selected" class="no-chat-selected">
+                    <div class="welcome-message">
+                        <i class="fab fa-whatsapp"></i>
+                        <h2>WhatsApp Web</h2>
+                        <p>Envie e receba mensagens sem precisar conectar seu telefone.</p>
+                        <p>Selecione uma conversa para começar a mensagem.</p>
+                    </div>
+                </div>
+
+                <div id="chat-messages" class="chat-messages" style="display: none;">
+                    <!-- Chat messages will be inserted here -->
+                </div>
+
+                <div id="message-input-container" class="message-input-container" style="display: none;">
+                    <div class="input-actions">
+                        <button class="input-btn" title="Anexar">
+                            <i class="fas fa-paperclip"></i>
+                        </button>
+                    </div>
+                    <div class="message-input-wrapper">
+                        <input type="text" id="message-input" placeholder="Digite uma mensagem" class="message-input">
+                    </div>
+                    <div class="input-actions">
+                        <button class="input-btn" title="Emoji">
+                            <i class="far fa-smile"></i>
+                        </button>
+                        <button id="send-btn" class="input-btn send-btn" title="Enviar">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Templates -->
+    <template id="chat-item-template">
+        <div class="chat-item" data-jid="">
+            <div class="chat-avatar">
+                <img src="https://via.placeholder.com/50" alt="Avatar">
+            </div>
+            <div class="chat-info">
+                <div class="chat-header">
+                    <h4 class="chat-name"></h4>
+                    <span class="chat-time"></span>
+                </div>
+                <div class="chat-preview">
+                    <p class="chat-message"></p>
+                    <div class="chat-meta">
+                        <span class="unread-count" style="display: none;"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="message-template">
+        <div class="message" data-message-id="">
+            <div class="message-content">
+                <div class="message-text"></div>
+                <div class="message-time"></div>
+            </div>
+        </div>
+    </template>
+
+    <script src="/static/app.js"></script>
+</body>
+</html> 

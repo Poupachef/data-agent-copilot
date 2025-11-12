@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+
+# Virtualenv
+.venv/
+venv/
+backend/venv/
+
+# Env / Secrets
+.env
+.env.*.local
+*.secret
+*.key
+
+# Logs
+*.log
+logs/
+
+# macOS / Windows
+.DS_Store
+Thumbs.db
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3*
+*.db-journal
+*.sqlite-journal
+
+# Test / Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Build / Caches
+dist/
+build/
+.cache/
+
+# Runtime / PIDs
+*.pid
+
+# Project-specific
+temp/
+uploads/
+service/sessions/
+backend/qr.png
+
+
