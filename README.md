@@ -20,12 +20,13 @@ docker-compose up -d
 ```bash
 cd backend
 pip install -r requirements.txt
+
 ```
 
 3. **Executar backend**:
 ```bash
 cd backend
-python main.py
+uvicorn main:app --reload --host 0.0.0.0 --port 8001
 ```
 
 4. **Acessar**: http://localhost:8001
