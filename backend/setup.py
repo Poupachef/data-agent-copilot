@@ -1,16 +1,23 @@
 #!/usr/bin/env python3
 """
-Script de setup para configuração de webhooks
+Script de setup para configuração de webhooks.
+Verifica dependências, cria arquivos de configuração e testa conexões.
 """
 
 import os
+import secrets
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
-def check_dependencies():
-    """Verifica se as dependências estão instaladas"""
+def check_dependencies() -> bool:
+    """
+    Verifica se as dependências estão instaladas.
+    
+    Returns:
+        True se todas as dependências estão instaladas
+    """
     print("🔍 Verificando dependências...")
     
     try:
@@ -32,8 +39,13 @@ def check_dependencies():
     
     return True
 
-def create_env_file():
-    """Cria arquivo .env se não existir"""
+def create_env_file() -> bool:
+    """
+    Cria arquivo .env se não existir.
+    
+    Returns:
+        True se arquivo foi criado ou já existe
+    """
     env_file = Path(".env")
     env_example = Path("env.example")
     
@@ -51,13 +63,22 @@ def create_env_file():
         print("❌ Arquivo env.example não encontrado")
         return False
 
-def generate_secret_key():
-    """Gera uma chave secreta para HMAC"""
-    import secrets
+def generate_secret_key() -> str:
+    """
+    Gera uma chave secreta para HMAC.
+    
+    Returns:
+        Chave secreta hexadecimal de 64 caracteres
+    """
     return secrets.token_hex(32)
 
-def update_env_secret():
-    """Atualiza a chave secreta no arquivo .env"""
+def update_env_secret() -> bool:
+    """
+    Atualiza a chave secreta no arquivo .env.
+    
+    Returns:
+        True se a chave foi atualizada com sucesso
+    """
     env_file = Path(".env")
     
     if not env_file.exists():
@@ -91,8 +112,13 @@ def update_env_secret():
     print(f"✅ Nova chave secreta gerada: {new_secret[:16]}...")
     return True
 
-def test_webhook_connection():
-    """Testa conexão com o webhook"""
+def test_webhook_connection() -> bool:
+    """
+    Testa conexão com o backend.
+    
+    Returns:
+        True se o backend está respondendo
+    """
     print("🧪 Testando conexão com webhook...")
     
     try:
@@ -109,8 +135,13 @@ def test_webhook_connection():
         print("💡 Certifique-se de que o backend está rodando em http://localhost:8001")
         return False
 
-def run_webhook_tests():
-    """Executa testes de webhook"""
+def run_webhook_tests() -> bool:
+    """
+    Executa testes de webhook.
+    
+    Returns:
+        True se todos os testes passaram
+    """
     print("🧪 Executando testes de webhook...")
     
     try:
@@ -129,8 +160,8 @@ def run_webhook_tests():
         print(f"❌ Erro ao executar testes: {e}")
         return False
 
-def show_configuration_help():
-    """Mostra ajuda para configuração"""
+def show_configuration_help() -> None:
+    """Mostra ajuda para configuração."""
     print("\n📋 CONFIGURAÇÃO DE WEBHOOKS")
     print("=" * 50)
     print()
@@ -146,8 +177,8 @@ def show_configuration_help():
     print("   python setup.py --generate-secret # Gerar nova chave secreta")
     print()
 
-def main():
-    """Função principal"""
+def main() -> None:
+    """Função principal do script de setup."""
     print("🚀 Setup do Sistema de Webhooks")
     print("=" * 40)
     print()

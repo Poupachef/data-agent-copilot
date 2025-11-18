@@ -1,68 +1,34 @@
 """
-Configuration file for WhatsApp Web Backend
+Configuração centralizada do backend.
+Carrega variáveis de ambiente e define constantes.
 """
 
 import os
 from pathlib import Path
+from typing import Optional
 
-# Load environment variables from .env file if it exists
+# Carrega variáveis de ambiente do arquivo .env se disponível
 try:
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
-    # dotenv not installed, continue without it
     pass
 
-# Base configuration
-WAHA_URL = os.getenv("WAHA_URL", "http://localhost:3000")
-WAHA_API_KEY = os.getenv("WAHA_API_KEY")
-BACKEND_PORT = int(os.getenv("BACKEND_PORT", "8001"))
-BACKEND_HOST = os.getenv("BACKEND_HOST", "0.0.0.0")
+# URLs e autenticação
+WAHA_URL: str = os.getenv("WAHA_URL", "http://localhost:3000")
+WAHA_API_KEY: Optional[str] = os.getenv("WAHA_API_KEY")
 
-# Frontend path
-FRONTEND_PATH = Path(__file__).parent.parent / "application" / "static"
+# Porta e host do servidor
+BACKEND_PORT: int = int(os.getenv("BACKEND_PORT", "8001"))
+BACKEND_HOST: str = os.getenv("BACKEND_HOST", "0.0.0.0")
 
-# Webhook configuration
-WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "your-secret-key")
-WEBHOOK_ENABLE_HMAC = os.getenv("WEBHOOK_ENABLE_HMAC", "true").lower() == "true"
+# Caminho do frontend
+FRONTEND_PATH: Path = Path(__file__).parent.parent / "application" / "static"
 
-# Logging configuration
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
-LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+# Configuração de logging
+LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+LOG_FORMAT: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
-# WebSocket configuration
-WEBSOCKET_PING_INTERVAL = int(os.getenv("WEBSOCKET_PING_INTERVAL", "30"))
-WEBSOCKET_PING_TIMEOUT = int(os.getenv("WEBSOCKET_PING_TIMEOUT", "10"))
-
-# API configuration
-API_TIMEOUT = int(os.getenv("API_TIMEOUT", "30"))
-API_MAX_RETRIES = int(os.getenv("API_MAX_RETRIES", "3"))
-
-# Development configuration
-DEBUG = os.getenv("DEBUG", "false").lower() == "true"
-RELOAD = os.getenv("RELOAD", "true").lower() == "true"
-
-# Webhook events to handle (comma-separated)
-WEBHOOK_EVENTS = os.getenv("WEBHOOK_EVENTS", "message,message.any,message.ack,session.status").split(",")
-
-# HMAC algorithms supported
-SUPPORTED_HMAC_ALGORITHMS = ["sha512"]
-
-# Event status mappings
-MESSAGE_ACK_STATUSES = {
-    -1: "ERROR",
-    0: "PENDING", 
-    1: "SERVER",
-    2: "DEVICE",
-    3: "READ",
-    4: "PLAYED"
-}
-
-# Session status mappings
-SESSION_STATUSES = {
-    "STOPPED": "Parado",
-    "STARTING": "Iniciando",
-    "SCAN_QR_CODE": "Aguardando QR Code",
-    "WORKING": "Funcionando",
-    "FAILED": "Falhou"
-} 
+# Configuração de desenvolvimento
+DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
+RELOAD: bool = os.getenv("RELOAD", "true").lower() == "true"
