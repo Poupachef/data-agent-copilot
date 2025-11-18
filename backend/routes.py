@@ -39,12 +39,22 @@ def setup_routes(app: FastAPI) -> None:
         """Endpoint de health check."""
         return JSONResponse({"status": "ok", "message": "Backend is running"})
     
-    @app.api_route("/api/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
+    @app.api_route("/api/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
     async def api_proxy(request: Request, path: str) -> JSONResponse:
         """
         Proxy genérico para API Waha.
         Encaminha todas as requisições /api/* para o Waha.
         """
+        # Responde OPTIONS diretamente (preflight CORS)
+        if request.method == "OPTIONS":
+            return JSONResponse(
+                content={},
+                headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                    "Access-Control-Allow-Headers": "*",
+                }
+            )
         return await proxy_request(request, path)
     
     @app.websocket("/ws/{phone}")

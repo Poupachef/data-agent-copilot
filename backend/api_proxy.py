@@ -26,6 +26,10 @@ async def proxy_request(request: Request, path: str) -> Response:
     Returns:
         Resposta da API Waha ou erro
     """
+    # Se for OPTIONS, já foi tratado na rota
+    if request.method == "OPTIONS":
+        return JSONResponse(content={})
+    
     url = f"{WAHA_URL}/api/{path}"
     params = dict(request.query_params)
     
