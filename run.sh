@@ -1,6 +1,9 @@
 #!/bin/bash
 
-# Script para iniciar o backend e o serviço Docker (Waha)
+# Script para iniciar o backend e o serviço Docker (Waha ou Mockup)
+# Uso: ./run.sh [mock]
+#   - ./run.sh mock  -> Inicia o mockup do Waha
+#   - ./run.sh       -> Inicia o Waha real
 # Imprime todos os endereços relevantes
 
 # Não encerra em erros (usamos verificações manuais)
@@ -12,10 +15,25 @@ BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Verifica se deve usar mockup
+USE_MOCKUP=false
+if [ "$1" = "mock" ]; then
+    USE_MOCKUP=true
+fi
+
 # Diretórios
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVICE_DIR="$SCRIPT_DIR/service"
 BACKEND_DIR="$SCRIPT_DIR/backend"
+
+# Define diretório do docker-compose baseado no modo
+if [ "$USE_MOCKUP" = true ]; then
+    DOCKER_COMPOSE_DIR="$SERVICE_DIR/mockup"
+    SERVICE_NAME="Mockup do Waha"
+else
+    DOCKER_COMPOSE_DIR="$SERVICE_DIR/waha"
+    SERVICE_NAME="Waha"
+fi
 
 # Portas
 WAHA_PORT=3001
@@ -30,7 +48,7 @@ cleanup() {
     if [ -n "$BACKEND_PID" ]; then
         kill $BACKEND_PID 2>/dev/null || true
     fi
-    cd "$SERVICE_DIR"
+    cd "$DOCKER_COMPOSE_DIR"
     if [ -n "$DOCKER_COMPOSE_CMD" ]; then
         $DOCKER_COMPOSE_CMD down
     else
@@ -45,6 +63,11 @@ trap cleanup SIGINT SIGTERM
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}  WhatsApp Web - Iniciando Serviços${NC}"
+if [ "$USE_MOCKUP" = true ]; then
+    echo -e "${BLUE}  Modo: Mockup${NC}"
+else
+    echo -e "${BLUE}  Modo: Waha Real${NC}"
+fi
 echo -e "${BLUE}========================================${NC}\n"
 
 # Verifica se Docker está rodando
@@ -62,25 +85,29 @@ else
     DOCKER_COMPOSE_CMD="docker-compose"
 fi
 
-# Inicia Docker Compose (Waha)
-echo -e "${GREEN}[1/2]${NC} Iniciando serviço Waha (Docker)..."
-cd "$SERVICE_DIR"
+# Inicia Docker Compose
+echo -e "${GREEN}[1/2]${NC} Iniciando serviço $SERVICE_NAME (Docker)..."
+cd "$DOCKER_COMPOSE_DIR"
 
 # Para containers existentes se houver
 $DOCKER_COMPOSE_CMD down > /dev/null 2>&1 || true
 
 # Inicia em background
-$DOCKER_COMPOSE_CMD up -d
+if [ "$USE_MOCKUP" = true ]; then
+    $DOCKER_COMPOSE_CMD up -d --build
+else
+    $DOCKER_COMPOSE_CMD up -d
+fi
 
-# Aguarda o serviço Waha estar pronto
-echo -e "${YELLOW}Aguardando Waha iniciar...${NC}"
+# Aguarda o serviço estar pronto
+echo -e "${YELLOW}Aguardando $SERVICE_NAME iniciar...${NC}"
 for i in {1..30}; do
-    if curl -s http://localhost:$WAHA_PORT/api/sessions > /dev/null 2>&1; then
-        echo -e "${GREEN}✓ Waha está rodando${NC}"
+    if curl -s http://localhost:$WAHA_PORT/ping > /dev/null 2>&1; then
+        echo -e "${GREEN}✓ $SERVICE_NAME está rodando${NC}"
         break
     fi
     if [ $i -eq 30 ]; then
-        echo -e "${YELLOW}⚠️  Waha pode não estar totalmente pronto, mas continuando...${NC}"
+        echo -e "${YELLOW}⚠️  $SERVICE_NAME pode não estar totalmente pronto, mas continuando...${NC}"
     fi
     sleep 1
 done
@@ -128,9 +155,17 @@ echo -e "  ${YELLOW}Backend API:${NC}"
 echo -e "    → http://localhost:$BACKEND_PORT/api"
 echo -e "    → Health Check: http://localhost:$BACKEND_PORT/ping\n"
 
-echo -e "  ${YELLOW}Waha API (Docker):${NC}"
+if [ "$USE_MOCKUP" = true ]; then
+    echo -e "  ${YELLOW}Waha Mockup API (Docker):${NC}"
+else
+    echo -e "  ${YELLOW}Waha API (Docker):${NC}"
+fi
 echo -e "    → http://localhost:$WAHA_PORT/api"
-echo -e "    → http://localhost:$WAHA_PORT/docs (Swagger)\n"
+echo -e "    → http://localhost:$WAHA_PORT/ping (Health Check)"
+if [ "$USE_MOCKUP" = false ]; then
+    echo -e "    → http://localhost:$WAHA_PORT/docs (Swagger)"
+fi
+echo ""
 
 echo -e "  ${YELLOW}WebSocket:${NC}"
 echo -e "    → ws://localhost:$BACKEND_PORT/ws/{phone}\n"

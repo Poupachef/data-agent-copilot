@@ -17,11 +17,6 @@ const Chat = {
      */
     async loadChats() {
         try {
-            // Se estiver em modo mockado, usa dados mockados
-            const mockModule = (typeof Mock !== 'undefined' ? Mock : null) || (typeof window.Mock !== 'undefined' ? window.Mock : null);
-            if (mockModule && mockModule.isMockMode && mockModule.isMockMode()) {
-                return await mockModule.getChats();
-            }
             const apiModule = (typeof API !== 'undefined' ? API : null) || (typeof window.API !== 'undefined' ? window.API : null);
             if (apiModule && apiModule.getChats) {
                 return await apiModule.getChats(DEFAULT_SESSION);
@@ -40,17 +35,10 @@ const Chat = {
         currentChat = chatId;
         
         try {
-            // Se estiver em modo mockado, usa dados mockados
-            const mockModule = (typeof Mock !== 'undefined' ? Mock : null) || (typeof window.Mock !== 'undefined' ? window.Mock : null);
-            if (mockModule && mockModule.isMockMode && mockModule.isMockMode()) {
-                const messages = await mockModule.getMessages(chatId);
+            const apiModule = (typeof API !== 'undefined' ? API : null) || (typeof window.API !== 'undefined' ? window.API : null);
+            if (apiModule && apiModule.getMessages) {
+                const messages = await apiModule.getMessages(DEFAULT_SESSION, chatId);
                 if (renderMessages) renderMessages(messages);
-            } else {
-                const apiModule = (typeof API !== 'undefined' ? API : null) || (typeof window.API !== 'undefined' ? window.API : null);
-                if (apiModule && apiModule.getMessages) {
-                    const messages = await apiModule.getMessages(DEFAULT_SESSION, chatId);
-                    if (renderMessages) renderMessages(messages);
-                }
             }
         } catch (error) {
             console.error('Erro ao carregar mensagens:', error);
@@ -64,16 +52,9 @@ const Chat = {
         if (!currentChat || !text.trim()) return;
         
         try {
-            // Se estiver em modo mockado, usa dados mockados
-            const mockModule = (typeof Mock !== 'undefined' ? Mock : null) || (typeof window.Mock !== 'undefined' ? window.Mock : null);
-            if (mockModule && mockModule.isMockMode && mockModule.isMockMode()) {
-                const result = await mockModule.sendMessage(currentChat, text.trim());
-                return result;
-            } else {
-                const apiModule = (typeof API !== 'undefined' ? API : null) || (typeof window.API !== 'undefined' ? window.API : null);
-                if (apiModule && apiModule.sendTextMessage) {
-                    await apiModule.sendTextMessage(DEFAULT_SESSION, currentChat, text.trim());
-                }
+            const apiModule = (typeof API !== 'undefined' ? API : null) || (typeof window.API !== 'undefined' ? window.API : null);
+            if (apiModule && apiModule.sendTextMessage) {
+                await apiModule.sendTextMessage(DEFAULT_SESSION, currentChat, text.trim());
             }
         } catch (error) {
             console.error('Erro ao enviar mensagem:', error);

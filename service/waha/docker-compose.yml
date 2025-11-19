@@ -1,0 +1,29 @@
+services:
+  waha:
+    image: devlikeapro/waha
+    platform: linux/amd64
+    container_name: waha-service
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    env_file:
+      - .env
+    environment:
+      - WAHA_PRINT_QR=false
+      - WAHA_LOG_LEVEL=debug
+      - WAHA_DEBUG=true
+      - WAHA_LOG_WEBHOOKS=true
+      - WAHA_LOG_MESSAGES=true
+    volumes:
+      - waha_sessions:/app/.sessions
+    networks:
+      - waha-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  waha_sessions:
+
+networks:
+  waha-network:
+    driver: bridge 

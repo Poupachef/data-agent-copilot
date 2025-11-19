@@ -1,6 +1,6 @@
 services:
   mockup:
-    build: ./mockup
+    build: .
     container_name: waha-mockup
     restart: unless-stopped
     ports:

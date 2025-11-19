@@ -20,14 +20,6 @@ function getUIModule() {
     }
 }
 
-function getMockModule() {
-    try {
-        return (typeof window.Mock !== 'undefined') ? window.Mock : null;
-    } catch (e) {
-        return null;
-    }
-}
-
 function getChatModule() {
     try {
         return (typeof window.Chat !== 'undefined') ? window.Chat : null;
@@ -38,7 +30,6 @@ function getChatModule() {
 
 // Torna as funções auxiliares globais para uso em onclick handlers
 window.getUIModule = getUIModule;
-window.getMockModule = getMockModule;
 window.getChatModule = getChatModule;
 
 // Elementos DOM (serão inicializados no DOMContentLoaded)
@@ -189,21 +180,11 @@ async function stopSession() {
 
 async function logout() {
     const ui = getUIModule();
-    const mock = getMockModule();
     try {
-        // Se estiver em modo mockado, apenas desativa o modo
-        if (mock && mock.isMockMode && mock.isMockMode()) {
-            mock.disableMockMode();
-            if (ui) {
-                ui.showLogin();
-                ui.notify('Modo mockado desativado', 'success');
-            }
-        } else {
-            await Session.logout(session);
-            if (ui) {
-                ui.showLogin();
-                ui.notify('Logout completo realizado', 'success');
-            }
+        await Session.logout(session);
+        if (ui) {
+            ui.showLogin();
+            ui.notify('Logout completo realizado', 'success');
         }
     } catch (error) {
         if (ui) ui.notify('Erro no logout: ' + error.message, 'error');
@@ -248,120 +229,6 @@ async function checkStatus() {
     }
 }
 
-// Modo mockado - função global (substitui a versão inline do HTML)
-window._startMockModeReady = function() {
-    console.log('=== startMockMode chamado (app.js) ===');
-    const mock = getMockModule();
-    const ui = getUIModule();
-    const chat = getChatModule();
-    
-    if (!mock) {
-        console.error('❌ Módulo Mock não disponível - não é possível iniciar modo mockado');
-        alert('Erro: módulo Mock não carregado. Recarregue a página.');
-        return;
-    }
-    
-    if (!ui) {
-        console.warn('⚠️ UI ainda não carregada. Usando fallback simples.');
-    }
-    
-    try {
-        console.log('Ativando modo mockado...');
-        if (mock.enableMockMode) {
-            mock.enableMockMode();
-        }
-        console.log('Modo mockado ativado no localStorage');
-        
-        console.log('Mostrando notificação...');
-        if (ui && ui.notify) {
-            ui.notify('Modo mockado ativado!', 'success');
-        }
-        
-        console.log('Mostrando chat...');
-        if (ui && ui.showChat) {
-            ui.showChat();
-        } else {
-            const loginScreenEl = document.getElementById('login-screen');
-            const chatInterfaceEl = document.getElementById('chat-interface');
-            if (loginScreenEl) loginScreenEl.style.display = 'none';
-            if (chatInterfaceEl) chatInterfaceEl.style.display = 'flex';
-        }
-        
-        // Aguarda um pouco para garantir que as funções estejam disponíveis
-        setTimeout(() => {
-            if (typeof loadChats === 'function' || typeof window.loadChats === 'function') {
-                (loadChats || window.loadChats)();
-            } else if (mock.getChats) {
-                console.log('Carregando chats diretamente do Mock (fallback)...');
-                mock.getChats().then(chats => {
-                    const chatListEl = document.getElementById('chat-list');
-                    if (chatListEl) {
-                        const html = chats.map(chat => {
-                            const chatId = chat.id._serialized || chat.id;
-                            const name = chat.name || chatId?.split?.('@')[0] || 'Desconhecido';
-                            return `
-                                <div class="chat-item" data-chat-id="${chatId}" onclick="window.selectChat && window.selectChat('${chatId}')">
-                                    <div class="chat-avatar"><div class="avatar-placeholder">👤</div></div>
-                                    <div class="chat-info">
-                                        <div class="chat-name">${name}</div>
-                                        <div class="chat-preview">${chat.lastMessage?.body || ''}</div>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('');
-                        chatListEl.innerHTML = html;
-                    }
-                });
-            }
-        }, 200);
-    } catch (error) {
-        console.error('❌ Erro ao iniciar modo mockado:', error);
-        console.error('Stack trace:', error.stack);
-        if (ui && ui.notify) {
-            ui.notify('Erro ao iniciar modo mockado: ' + error.message, 'error');
-        }
-    }
-};
-
-// Substitui a função inline do HTML pela versão completa
-window.startMockMode = window._startMockModeReady;
-
-// Garante que está disponível globalmente
-if (typeof window.startMockMode !== 'function') {
-    console.error('❌ Falha ao definir window.startMockMode!');
-} else {
-    console.log('✅ window.startMockMode definida e disponível globalmente');
-}
-
-// Se alguém clicou antes, executa assim que os módulos carregarem
-if (window._pendingMockModeStart) {
-    console.log('🔁 Processando chamada pendente do modo mockado...');
-    window._pendingMockModeStart = false;
-    setTimeout(() => window.startMockMode(), 50);
-}
-
-// Configura handler para novas mensagens mockadas
-window.mockMessageHandler = (message, chatId) => {
-    const chatModule = getChatModule();
-    if (chatModule) {
-        const currentChatId = chatModule.getCurrentChat ? chatModule.getCurrentChat() : null;
-        if (currentChatId && chatId === currentChatId) {
-            const messageHtml = (chatModule.createMessageHtml) 
-                ? chatModule.createMessageHtml(message)
-                : createSimpleMessageHtml(message);
-            const chatMessagesEl = document.getElementById('chat-messages');
-            if (chatMessagesEl) {
-                chatMessagesEl.insertAdjacentHTML('beforeend', messageHtml);
-                chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
-            }
-        }
-        if (typeof loadChats === 'function' || typeof window.loadChats === 'function') {
-            (loadChats || window.loadChats)();
-        }
-    }
-};
-
-console.log('✅ window.startMockMode definida em app.js:', typeof window.startMockMode);
 
 // Chats e mensagens
 async function loadChats() {
@@ -374,110 +241,7 @@ async function loadChats() {
             return;
         }
         
-        // Verifica se está em modo mockado
-        const mock = getMockModule();
-        console.log('🔍 Verificando modo mockado...');
-        console.log('  mock disponível?', !!mock);
-        console.log('  mock.isMockMode?', mock && typeof mock.isMockMode);
-        
-        let isMock = false;
-        try {
-            if (mock && mock.isMockMode) {
-                isMock = mock.isMockMode();
-                console.log('  isMockMode() retornou:', isMock);
-            } else {
-                // Fallback: verifica localStorage diretamente
-                isMock = localStorage.getItem('mockMode') === 'true';
-                console.log('  Verificando localStorage diretamente:', isMock);
-            }
-        } catch (err) {
-            console.error('  Erro ao verificar modo mockado:', err);
-            // Fallback: verifica localStorage diretamente
-            isMock = localStorage.getItem('mockMode') === 'true';
-            console.log('  Usando fallback localStorage:', isMock);
-        }
-        
-        if (isMock) {
-            console.log('✅ Modo mockado detectado, carregando chats do Mock...');
-            try {
-                if (!mock || !mock.getChats) {
-                    throw new Error('Mock.getChats não disponível');
-                }
-                console.log('  Chamando mock.getChats()...');
-                const chats = await mock.getChats();
-                console.log('✅ Chats recebidos do Mock:', chats ? chats.length : 0);
-                console.log('  Chats:', chats);
-                
-                // Tenta usar Chat.renderChats se disponível
-                const chatModule = getChatModule();
-                if (chatModule && chatModule.renderChats) {
-                    console.log('✅ Usando Chat.renderChats...');
-                    try {
-                        chatListEl.innerHTML = chatModule.renderChats(chats, 'selectChat');
-                        console.log('✅ Chats renderizados com Chat.renderChats');
-                    } catch (renderErr) {
-                        console.error('❌ Erro ao renderizar com Chat.renderChats:', renderErr);
-                        throw renderErr;
-                    }
-                } else {
-                    console.log('⚠️ Chat.renderChats não disponível, usando fallback...');
-                    // Fallback: renderiza chats simples
-                    try {
-                        const html = chats.map((chat, index) => {
-                            try {
-                                const chatId = chat.id && chat.id._serialized ? chat.id._serialized : (chat.id || `unknown-${index}`);
-                                const name = chat.name || (typeof chatId === 'string' ? chatId.split('@')[0] : 'Desconhecido');
-                                const lastMsg = chat.lastMessage || {};
-                                const lastMsgText = (lastMsg.body || '').substring(0, 50); // Limita tamanho
-                                const lastMsgTime = lastMsg.timestamp
-            ? new Date(lastMsg.timestamp * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-            : '';
-        const unread = chat.unreadCount > 0
-            ? `<span class="unread-badge">${chat.unreadCount}</span>`
-            : '';
-
-        return `
-                                    <div class="chat-item" data-chat-id="${chatId}" onclick="if (typeof window.selectChat === 'function') { window.selectChat('${chatId}'); } else { alert('Função selectChat não disponível'); }">
-                <div class="chat-avatar">
-                    <div class="avatar-placeholder">👤</div>
-                </div>
-                <div class="chat-info">
-                    <div class="chat-header">
-                        <div class="chat-name">${name}</div>
-                        <div class="chat-time">${lastMsgTime}</div>
-                    </div>
-                    <div class="chat-preview">
-                                                <div class="chat-message">${lastMsgText}</div>
-                        ${unread}
-                    </div>
-                </div>
-            </div>
-        `;
-                            } catch (chatErr) {
-                                console.error(`❌ Erro ao renderizar chat ${index}:`, chatErr);
-                                return '';
-                            }
-                        }).filter(html => html).join('');
-                        
-                        chatListEl.innerHTML = html;
-                        console.log('✅ Chats renderizados com fallback');
-                    } catch (renderErr) {
-                        console.error('❌ Erro ao renderizar chats com fallback:', renderErr);
-                        throw renderErr;
-                    }
-                }
-                console.log('✅ Lista de chats renderizada com sucesso!');
-                return;
-            } catch (err) {
-                console.error('❌ Erro ao carregar chats do Mock:', err);
-                console.error('  Tipo do erro:', typeof err);
-                console.error('  Mensagem:', err.message);
-                console.error('  Stack:', err.stack);
-                throw err;
-            }
-        }
-        
-        // Modo normal: usa Chat module
+        // Carrega chats via Chat module
         const chatModule = getChatModule();
         if (!chatModule || !chatModule.loadChats) {
             console.log('⚠️ Chat.loadChats não disponível, aguardando...');
@@ -560,14 +324,7 @@ async function selectChat(chatId) {
     if (messageInputContainer) messageInputContainer.style.display = 'flex';
     
     try {
-        // Verifica se está em modo mockado
-        const mockModule = getMockModule();
-        if (mockModule && mockModule.isMockMode && mockModule.isMockMode()) {
-            console.log('✅ Carregando mensagens do Mock...');
-            const messages = await mockModule.getMessages(chatId);
-            console.log('✅ Mensagens recebidas:', messages);
-            renderMessages(messages);
-        } else if (chatModule && chatModule.selectChat) {
+        if (chatModule && chatModule.selectChat) {
             // Usa Chat.selectChat se disponível
             console.log('✅ Usando Chat.selectChat...');
             await chatModule.selectChat(chatId, renderMessages);
@@ -659,29 +416,12 @@ async function sendMessage() {
     messageInputEl.value = '';
     
     try {
-        const mockModule = getMockModule();
         const uiModule = getUIModule();
         
-        let result;
-        if (mockModule && mockModule.isMockMode && mockModule.isMockMode()) {
-            // Modo mockado
-            result = await mockModule.sendMessage(currentChatId, message);
-            
-            // Adiciona a mensagem enviada à tela
-            if (result && result.message) {
-                const chatMessagesEl = document.getElementById('chat-messages');
-                if (chatMessagesEl) {
-                    const messageHtml = (chatModule && chatModule.createMessageHtml) 
-                        ? chatModule.createMessageHtml(result.message)
-                        : createSimpleMessageHtml(result.message);
-                    chatMessagesEl.insertAdjacentHTML('beforeend', messageHtml);
-                    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
-                }
-            }
-        } else if (chatModule && chatModule.sendMessage) {
+        if (chatModule && chatModule.sendMessage) {
             // Usa Chat.sendMessage
-            result = await chatModule.sendMessage(message);
-    } else {
+            await chatModule.sendMessage(message);
+        } else {
             throw new Error('Nenhum método disponível para enviar mensagem');
         }
     } catch (error) {
@@ -751,11 +491,8 @@ function showChat() {
         if (loginScreen) loginScreen.style.display = 'none';
         if (chatInterface) chatInterface.style.display = 'flex';
     }
-    // Só conecta WebSocket se não estiver em modo mockado
-    const mock = getMockModule();
-    if (mock && mock.isMockMode && mock.isMockMode()) {
-        // Modo mockado, não conecta WebSocket
-    } else if (typeof WebSocket !== 'undefined' && WebSocket.connectWebSocket) {
+    // Conecta WebSocket
+    if (typeof WebSocket !== 'undefined' && WebSocket.connectWebSocket) {
         WebSocket.connectWebSocket(phone, wsHandlers);
     }
     if (typeof loadChats === 'function') {
@@ -827,11 +564,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const sessionSettingsBtn = document.getElementById('session-settings-btn');
     const logoutBtn = document.getElementById('logout-btn');
     const sendBtn = document.getElementById('send-btn');
-    const startMockBtn = document.getElementById('start-mock-btn');
-    
-    console.log('Inicializando event listeners...');
-    console.log('Botão mockado encontrado?', !!startMockBtn);
-    
     if (generateQRBtn) generateQRBtn.onclick = generateQR;
     if (startSessionBtn) startSessionBtn.onclick = startSession;
     if (stopSessionBtn) stopSessionBtn.onclick = stopSession;
@@ -839,61 +571,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (sessionSettingsBtn) sessionSettingsBtn.onclick = showSessionSettings;
     if (logoutBtn) logoutBtn.onclick = logout;
     if (sendBtn) sendBtn.onclick = sendMessage;
-    if (startMockBtn) {
-        console.log('✅ Botão mockado encontrado:', startMockBtn);
-        console.log('Configurando event listener...');
-        
-        // Tenta múltiplas formas de adicionar o listener
-        startMockBtn.onclick = function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('🖱️ Botão mockado clicado (onclick)!');
-            console.log('startMockMode disponível?', typeof startMockMode !== 'undefined');
-            console.log('window.startMockMode disponível?', typeof window.startMockMode !== 'undefined');
-            if (typeof startMockMode === 'function') {
-                try {
-                    startMockMode();
-                } catch (err) {
-                    console.error('Erro ao executar startMockMode:', err);
-                    alert('Erro: ' + err.message);
-                }
-            } else if (typeof window.startMockMode === 'function') {
-                try {
-                    window.startMockMode();
-                } catch (err) {
-                    console.error('Erro ao executar window.startMockMode:', err);
-                    alert('Erro: ' + err.message);
-                }
-            } else {
-                console.error('❌ startMockMode não está definida!');
-                alert('Erro: função startMockMode não encontrada. Verifique o console.');
-            }
-        };
-        
-        startMockBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('🖱️ Botão mockado clicado (addEventListener)!');
-            if (typeof startMockMode === 'function') {
-                startMockMode();
-            } else if (typeof window.startMockMode === 'function') {
-                window.startMockMode();
-            }
-        });
-        
-        console.log('✅ Event listeners configurados no botão mockado');
-        
-        // Teste: tenta clicar programaticamente após 1 segundo
-        setTimeout(() => {
-            console.log('Teste: verificando se o botão está funcionando...');
-            console.log('Botão ainda existe?', !!document.getElementById('start-mock-btn'));
-        }, 1000);
-    } else {
-        console.error('❌ Botão start-mock-btn não encontrado!');
-        console.log('Tentando encontrar novamente...');
-        const btn = document.getElementById('start-mock-btn');
-        console.log('Botão encontrado na segunda tentativa?', !!btn);
-    }
     
     if (createSessionBtn) createSessionBtn.onclick = createSession;
     if (deleteSessionBtn) deleteSessionBtn.onclick = deleteSession;
@@ -908,15 +585,10 @@ messageInput.onkeypress = (e) => {
 };
     }
     
-    // Verifica se já está em modo mockado
-    const mock = getMockModule();
-    if (mock && mock.isMockMode && mock.isMockMode()) {
-        showChat();
-        loadChats();
-    } else {
-        const ui = getUIModule();
+    // Inicializa interface
+    const ui = getUIModule();
     if (ui) ui.showLogin();
-        
+    
     const sessionControls = document.getElementById('session-controls');
     if (sessionControls) {
         sessionControls.style.display = 'block';
@@ -926,6 +598,5 @@ messageInput.onkeypress = (e) => {
     
     if (phone) {
         checkStatus();
-        }
     }
 });
