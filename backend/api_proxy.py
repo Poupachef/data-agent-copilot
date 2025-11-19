@@ -37,10 +37,14 @@ async def proxy_request(request: Request, path: str) -> Response:
     forward_headers = _prepare_headers(request)
     
     try:
-        async with httpx.AsyncClient() as client:
+        # Configura timeout para evitar travamentos
+        timeout = httpx.Timeout(30.0, connect=10.0)
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            logger.debug(f"Fazendo requisição para: {url}")
             response = await _make_request(
                 client, request.method, url, params, forward_headers, request
             )
+            logger.debug(f"Resposta recebida: {response.status_code}")
             
             # Trata respostas especiais (arquivos, QR codes)
             if path.startswith("files/"):
@@ -55,6 +59,18 @@ async def proxy_request(request: Request, path: str) -> Response:
                 media_type=response.headers.get("content-type", "application/json")
             )
             
+    except httpx.ConnectError as e:
+        logger.error(f"Erro de conexão com Waha em {WAHA_URL}: {repr(e)}")
+        return JSONResponse(
+            {"error": f"Não foi possível conectar ao Waha em {WAHA_URL}. Verifique se o serviço está rodando."}, 
+            status_code=502
+        )
+    except httpx.TimeoutException as e:
+        logger.error(f"Timeout ao conectar com Waha: {repr(e)}")
+        return JSONResponse(
+            {"error": "Timeout ao conectar com o Waha. O serviço pode estar sobrecarregado."}, 
+            status_code=502
+        )
     except httpx.RequestError as e:
         logger.error(f"Erro na requisição à API: {repr(e)}")
         return JSONResponse({"error": str(e)}, status_code=502)

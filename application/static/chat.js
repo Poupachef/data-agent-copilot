@@ -5,7 +5,9 @@
 
 console.log('📱 chat.js carregando...');
 
-const DEFAULT_SESSION = 'default';
+// Define constante local para evitar conflito com session.js
+// session.js carrega antes e já define DEFAULT_SESSION
+const CHAT_DEFAULT_SESSION = 'default';
 let currentChat = null;
 
 /**
@@ -19,7 +21,7 @@ const Chat = {
         try {
             const apiModule = (typeof API !== 'undefined' ? API : null) || (typeof window.API !== 'undefined' ? window.API : null);
             if (apiModule && apiModule.getChats) {
-                return await apiModule.getChats(DEFAULT_SESSION);
+                return await apiModule.getChats(CHAT_DEFAULT_SESSION);
             }
             return [];
         } catch (error) {
@@ -37,7 +39,7 @@ const Chat = {
         try {
             const apiModule = (typeof API !== 'undefined' ? API : null) || (typeof window.API !== 'undefined' ? window.API : null);
             if (apiModule && apiModule.getMessages) {
-                const messages = await apiModule.getMessages(DEFAULT_SESSION, chatId);
+                const messages = await apiModule.getMessages(CHAT_DEFAULT_SESSION, chatId);
                 if (renderMessages) renderMessages(messages);
             }
         } catch (error) {
@@ -54,7 +56,7 @@ const Chat = {
         try {
             const apiModule = (typeof API !== 'undefined' ? API : null) || (typeof window.API !== 'undefined' ? window.API : null);
             if (apiModule && apiModule.sendTextMessage) {
-                await apiModule.sendTextMessage(DEFAULT_SESSION, currentChat, text.trim());
+                await apiModule.sendTextMessage(CHAT_DEFAULT_SESSION, currentChat, text.trim());
             }
         } catch (error) {
             console.error('Erro ao enviar mensagem:', error);

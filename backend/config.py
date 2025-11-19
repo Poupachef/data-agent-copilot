@@ -10,12 +10,32 @@ from typing import Optional
 # Carrega variáveis de ambiente do arquivo .env se disponível
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    from pathlib import Path
+    # Carrega .env do diretório do backend
+    env_path = Path(__file__).parent / ".env"
+    if env_path.exists():
+        load_dotenv(env_path)
+        print(f"✅ Arquivo .env carregado: {env_path}")
+    else:
+        print(f"⚠️ Arquivo .env não encontrado em: {env_path}")
 except ImportError:
-    pass
+    # Fallback: carrega .env manualmente se dotenv não estiver disponível
+    from pathlib import Path
+    env_path = Path(__file__).parent / ".env"
+    if env_path.exists():
+        print(f"⚠️ python-dotenv não instalado. Carregando .env manualmente...")
+        with open(env_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    os.environ[key.strip()] = value.strip()
+        print(f"✅ Arquivo .env carregado manualmente: {env_path}")
+except Exception as e:
+    print(f"⚠️ Erro ao carregar .env: {e}")
 
 # URLs e autenticação
-WAHA_URL: str = os.getenv("WAHA_URL", "http://localhost:3000")
+WAHA_URL: str = os.getenv("WAHA_URL", "http://localhost:3001")
 WAHA_API_KEY: Optional[str] = os.getenv("WAHA_API_KEY")
 
 # Porta e host do servidor
