@@ -1,13 +1,45 @@
 /**
  * Aplicação principal WhatsApp Web.
  * Integra todos os módulos e gerencia o fluxo da aplicação.
+ * Versão: 3.0 - Todas as referências diretas a Chat removidas
  */
 
-console.log('📱 app.js carregado');
+console.log('📱 app.js carregado (versão 3.0)');
 
 // Configuração
 let phone = localStorage.getItem('phone') || '';
 let session = 'default';
+
+// Funções auxiliares para acessar módulos de forma segura
+// Versão: 2.0 - Todas as referências diretas removidas
+function getUIModule() {
+    try {
+        return (typeof window.UI !== 'undefined') ? window.UI : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function getMockModule() {
+    try {
+        return (typeof window.Mock !== 'undefined') ? window.Mock : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function getChatModule() {
+    try {
+        return (typeof window.Chat !== 'undefined') ? window.Chat : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+// Torna as funções auxiliares globais para uso em onclick handlers
+window.getUIModule = getUIModule;
+window.getMockModule = getMockModule;
+window.getChatModule = getChatModule;
 
 // Elementos DOM (serão inicializados no DOMContentLoaded)
 let loginScreen;
@@ -30,16 +62,25 @@ const wsHandlers = {
         console.error('❌ WebSocket error:', error);
     },
     onAuthFailure: () => {
-        UI.showLogin();
-        UI.notify('Falha na autenticação', 'error');
+        const ui = getUIModule();
+        if (ui) {
+            ui.showLogin();
+            ui.notify('Falha na autenticação', 'error');
+        }
     },
     onQR: (qr) => {
-        UI.showQR(qr);
-        UI.notify('QR Code atualizado', 'info');
+        const ui = getUIModule();
+        if (ui) {
+            ui.showQR(qr);
+            ui.notify('QR Code atualizado', 'info');
+        }
     },
     onReady: () => {
-        UI.showChat();
-        UI.notify('WhatsApp conectado!', 'success');
+        const ui = getUIModule();
+        if (ui) {
+            ui.showChat();
+            ui.notify('WhatsApp conectado!', 'success');
+        }
         loadChats();
     },
     onMessage: (payload) => {
@@ -56,100 +97,116 @@ const wsHandlers = {
 
 // Gerenciamento de sessão
 async function createSession() {
+    const ui = getUIModule();
     try {
-        UI.updateStatus('Criando sessão...');
+        if (ui) ui.updateStatus('Criando sessão...');
         await Session.createSession(phone);
-        UI.notify('✅ Sessão criada!', 'success');
+        if (ui) ui.notify('✅ Sessão criada!', 'success');
         await checkSessionStatus();
     } catch (error) {
         console.error('❌ Erro ao criar sessão:', error);
-        UI.notify(`❌ Erro ao criar sessão: ${error.message}`, 'error');
+        if (ui) ui.notify(`❌ Erro ao criar sessão: ${error.message}`, 'error');
     }
 }
 
 async function deleteSession() {
+    const ui = getUIModule();
     try {
-        UI.updateStatus('Deletando sessão...');
+        if (ui) ui.updateStatus('Deletando sessão...');
         await Session.deleteSession(session);
-        UI.notify('✅ Sessão deletada!', 'success');
+        if (ui) ui.notify('✅ Sessão deletada!', 'success');
         await checkSessionStatus();
     } catch (error) {
         console.error('❌ Erro ao deletar sessão:', error);
-        UI.notify(`❌ Erro ao deletar sessão: ${error.message}`, 'error');
+        if (ui) ui.notify(`❌ Erro ao deletar sessão: ${error.message}`, 'error');
     }
 }
 
 async function checkSessionStatus() {
+    const ui = getUIModule();
     try {
         const sessionData = await Session.checkSessionStatus();
-        UI.updateSessionStatus(sessionData);
+        if (ui) ui.updateSessionStatus(sessionData);
     } catch (error) {
         console.error('❌ Erro ao verificar status da sessão:', error);
-        UI.updateSessionStatus({ status: 'ERROR', name: null });
+        if (ui) ui.updateSessionStatus({ status: 'ERROR', name: null });
     }
 }
 
 // Autenticação
 async function generateQR() {
+    const ui = getUIModule();
     if (!phone) {
-        UI.notify('Digite seu telefone', 'warning');
+        if (ui) ui.notify('Digite seu telefone', 'warning');
             return;
         }
         
     try {
-        UI.updateStatus('Gerando QR Code...');
+        if (ui) ui.updateStatus('Gerando QR Code...');
         const qrUrl = await Session.generateQRCode(session, phone);
         if (qrUrl) {
-            UI.showQR(qrUrl);
-            UI.updateStatus('QR Code pronto! Escaneie com seu WhatsApp');
-            UI.notify('QR Code gerado!', 'success');
-            } else {
+            if (ui) {
+                ui.showQR(qrUrl);
+                ui.updateStatus('QR Code pronto! Escaneie com seu WhatsApp');
+                ui.notify('QR Code gerado!', 'success');
+            }
+        } else {
             // Já está conectado
             const status = await API.getSessionStatus(session);
-            UI.updateSessionInfo(status);
+            if (ui) ui.updateSessionInfo(status);
         }
     } catch (error) {
-        UI.updateStatus('Erro: ' + error.message);
-        UI.notify('Erro ao gerar QR', 'error');
+        if (ui) {
+            ui.updateStatus('Erro: ' + error.message);
+            ui.notify('Erro ao gerar QR', 'error');
+        }
     }
 }
 
 async function startSession() {
+    const ui = getUIModule();
     try {
-        UI.updateStatus('Iniciando sessão...');
+        if (ui) ui.updateStatus('Iniciando sessão...');
         await Session.startSession(session);
-        UI.notify('Sessão iniciada', 'success');
+        if (ui) ui.notify('Sessão iniciada', 'success');
         await checkStatus();
     } catch (error) {
-        UI.notify('Erro ao iniciar sessão: ' + error.message, 'error');
+        if (ui) ui.notify('Erro ao iniciar sessão: ' + error.message, 'error');
     }
 }
 
 async function stopSession() {
+    const ui = getUIModule();
     try {
-        UI.updateStatus('Parando sessão...');
+        if (ui) ui.updateStatus('Parando sessão...');
         await Session.stopSession(session);
-        UI.notify('Sessão parada', 'success');
+        if (ui) ui.notify('Sessão parada', 'success');
         await checkStatus();
     } catch (error) {
-        UI.notify('Erro ao parar sessão: ' + error.message, 'error');
+        if (ui) ui.notify('Erro ao parar sessão: ' + error.message, 'error');
     }
 }
 
 async function logout() {
+    const ui = getUIModule();
+    const mock = getMockModule();
     try {
         // Se estiver em modo mockado, apenas desativa o modo
-        if (Mock && Mock.isMockMode()) {
-            Mock.disableMockMode();
-            UI.showLogin();
-            UI.notify('Modo mockado desativado', 'success');
+        if (mock && mock.isMockMode && mock.isMockMode()) {
+            mock.disableMockMode();
+            if (ui) {
+                ui.showLogin();
+                ui.notify('Modo mockado desativado', 'success');
+            }
         } else {
             await Session.logout(session);
-            UI.showLogin();
-            UI.notify('Logout completo realizado', 'success');
+            if (ui) {
+                ui.showLogin();
+                ui.notify('Logout completo realizado', 'success');
+            }
         }
     } catch (error) {
-        UI.notify('Erro no logout: ' + error.message, 'error');
+        if (ui) ui.notify('Erro no logout: ' + error.message, 'error');
     }
 }
 
@@ -166,8 +223,11 @@ async function checkStatus() {
             }
         }
         
-        UI.updateStatus(data.status);
-        UI.updateSessionInfo(data);
+        const ui = getUIModule();
+        if (ui) {
+            ui.updateStatus(data.status);
+            ui.updateSessionInfo(data);
+        }
         
         if (data.status === 'WORKING' || data.status === 'AUTHENTICATED') {
             console.log('✅ Status conectado');
@@ -176,132 +236,300 @@ async function checkStatus() {
             try {
                 const qrData = await API.getQRCode(session);
                 const qrUrl = URL.createObjectURL(qrData);
-                UI.showQR(qrUrl);
-    } catch (e) {
+                if (ui) ui.showQR(qrUrl);
+            } catch (e) {
                 console.error('Erro ao obter QR code:', e);
             }
         }
     } catch (error) {
         console.error('❌ Erro ao verificar status:', error);
-        UI.updateStatus('Erro ao verificar status');
+        const ui = getUIModule();
+        if (ui) ui.updateStatus('Erro ao verificar status');
     }
 }
 
-// Modo mockado - função global definida IMEDIATAMENTE
-window.startMockMode = function() {
-    console.log('=== startMockMode chamado ===');
-    console.log('Mock disponível?', typeof Mock !== 'undefined');
-    console.log('UI disponível?', typeof UI !== 'undefined');
-    console.log('Chat disponível?', typeof Chat !== 'undefined');
+// Modo mockado - função global (substitui a versão inline do HTML)
+window._startMockModeReady = function() {
+    console.log('=== startMockMode chamado (app.js) ===');
+    const mock = getMockModule();
+    const ui = getUIModule();
+    const chat = getChatModule();
     
-    // Aguarda um pouco se os módulos ainda não carregaram
-    if (typeof Mock === 'undefined' || typeof UI === 'undefined' || typeof Chat === 'undefined') {
-        console.log('⏳ Módulos ainda não carregaram, aguardando...');
-        setTimeout(() => {
-            window.startMockMode();
-        }, 500);
+    if (!mock) {
+        console.error('❌ Módulo Mock não disponível - não é possível iniciar modo mockado');
+        alert('Erro: módulo Mock não carregado. Recarregue a página.');
         return;
+    }
+    
+    if (!ui) {
+        console.warn('⚠️ UI ainda não carregada. Usando fallback simples.');
     }
     
     try {
         console.log('Ativando modo mockado...');
-        Mock.enableMockMode();
+        if (mock.enableMockMode) {
+            mock.enableMockMode();
+        }
         console.log('Modo mockado ativado no localStorage');
         
         console.log('Mostrando notificação...');
-        UI.notify('Modo mockado ativado!', 'success');
+        if (ui && ui.notify) {
+            ui.notify('Modo mockado ativado!', 'success');
+        }
         
         console.log('Mostrando chat...');
+        if (ui && ui.showChat) {
+            ui.showChat();
+        } else {
+            const loginScreenEl = document.getElementById('login-screen');
+            const chatInterfaceEl = document.getElementById('chat-interface');
+            if (loginScreenEl) loginScreenEl.style.display = 'none';
+            if (chatInterfaceEl) chatInterfaceEl.style.display = 'flex';
+        }
+        
         // Aguarda um pouco para garantir que as funções estejam disponíveis
         setTimeout(() => {
-            if (typeof showChat === 'function' || typeof window.showChat === 'function') {
-                (showChat || window.showChat)();
-            } else {
-                // Fallback direto
-                const loginScreen = document.getElementById('login-screen');
-                const chatInterface = document.getElementById('chat-interface');
-                if (loginScreen) loginScreen.style.display = 'none';
-                if (chatInterface) chatInterface.style.display = 'flex';
-            }
-            
-            console.log('Carregando chats...');
-            setTimeout(() => {
-                if (typeof loadChats === 'function' || typeof window.loadChats === 'function') {
-                    (loadChats || window.loadChats)();
-                }
-            }, 200);
-        }, 100);
-        
-        // Configura handler para novas mensagens mockadas
-        window.mockMessageHandler = (message, chatId) => {
-            if (typeof Chat !== 'undefined') {
-                const currentChatId = Chat.getCurrentChat();
-                if (currentChatId && chatId === currentChatId) {
-                    const messageHtml = Chat.createMessageHtml(message);
-                    const chatMessagesEl = document.getElementById('chat-messages');
-                    if (chatMessagesEl) {
-                        chatMessagesEl.insertAdjacentHTML('beforeend', messageHtml);
-                        chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+            if (typeof loadChats === 'function' || typeof window.loadChats === 'function') {
+                (loadChats || window.loadChats)();
+            } else if (mock.getChats) {
+                console.log('Carregando chats diretamente do Mock (fallback)...');
+                mock.getChats().then(chats => {
+                    const chatListEl = document.getElementById('chat-list');
+                    if (chatListEl) {
+                        const html = chats.map(chat => {
+                            const chatId = chat.id._serialized || chat.id;
+                            const name = chat.name || chatId?.split?.('@')[0] || 'Desconhecido';
+                            return `
+                                <div class="chat-item" data-chat-id="${chatId}" onclick="window.selectChat && window.selectChat('${chatId}')">
+                                    <div class="chat-avatar"><div class="avatar-placeholder">👤</div></div>
+                                    <div class="chat-info">
+                                        <div class="chat-name">${name}</div>
+                                        <div class="chat-preview">${chat.lastMessage?.body || ''}</div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                        chatListEl.innerHTML = html;
                     }
-                }
-                if (typeof loadChats === 'function') {
-                    loadChats();
-                }
+                });
             }
-        };
-        
-        console.log('✅ Modo mockado iniciado com sucesso!');
+        }, 200);
     } catch (error) {
         console.error('❌ Erro ao iniciar modo mockado:', error);
         console.error('Stack trace:', error.stack);
-        alert('Erro ao iniciar modo mockado: ' + error.message);
+        if (ui && ui.notify) {
+            ui.notify('Erro ao iniciar modo mockado: ' + error.message, 'error');
+        }
     }
 };
 
-console.log('✅ window.startMockMode definida IMEDIATAMENTE:', typeof window.startMockMode);
+// Substitui a função inline do HTML pela versão completa
+window.startMockMode = window._startMockModeReady;
 
-// Também define como função local para uso interno
-function startMockMode() {
-    window.startMockMode();
+// Garante que está disponível globalmente
+if (typeof window.startMockMode !== 'function') {
+    console.error('❌ Falha ao definir window.startMockMode!');
+} else {
+    console.log('✅ window.startMockMode definida e disponível globalmente');
 }
+
+// Se alguém clicou antes, executa assim que os módulos carregarem
+if (window._pendingMockModeStart) {
+    console.log('🔁 Processando chamada pendente do modo mockado...');
+    window._pendingMockModeStart = false;
+    setTimeout(() => window.startMockMode(), 50);
+}
+
+// Configura handler para novas mensagens mockadas
+window.mockMessageHandler = (message, chatId) => {
+    const chatModule = getChatModule();
+    if (chatModule) {
+        const currentChatId = chatModule.getCurrentChat ? chatModule.getCurrentChat() : null;
+        if (currentChatId && chatId === currentChatId) {
+            const messageHtml = (chatModule.createMessageHtml) 
+                ? chatModule.createMessageHtml(message)
+                : createSimpleMessageHtml(message);
+            const chatMessagesEl = document.getElementById('chat-messages');
+            if (chatMessagesEl) {
+                chatMessagesEl.insertAdjacentHTML('beforeend', messageHtml);
+                chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+            }
+        }
+        if (typeof loadChats === 'function' || typeof window.loadChats === 'function') {
+            (loadChats || window.loadChats)();
+        }
+    }
+};
+
+console.log('✅ window.startMockMode definida em app.js:', typeof window.startMockMode);
 
 // Chats e mensagens
 async function loadChats() {
+    console.log('🔄 loadChats chamado...');
     try {
         const chatListEl = document.getElementById('chat-list');
         if (!chatListEl) {
-            console.log('chat-list não encontrado, aguardando...');
+            console.log('⚠️ chat-list não encontrado, aguardando...');
             setTimeout(loadChats, 100);
             return;
         }
         
-        if (typeof Chat === 'undefined' || !Chat.loadChats) {
-            console.log('Chat.loadChats não disponível, aguardando...');
+        // Verifica se está em modo mockado
+        const mock = getMockModule();
+        console.log('🔍 Verificando modo mockado...');
+        console.log('  mock disponível?', !!mock);
+        console.log('  mock.isMockMode?', mock && typeof mock.isMockMode);
+        
+        let isMock = false;
+        try {
+            if (mock && mock.isMockMode) {
+                isMock = mock.isMockMode();
+                console.log('  isMockMode() retornou:', isMock);
+            } else {
+                // Fallback: verifica localStorage diretamente
+                isMock = localStorage.getItem('mockMode') === 'true';
+                console.log('  Verificando localStorage diretamente:', isMock);
+            }
+        } catch (err) {
+            console.error('  Erro ao verificar modo mockado:', err);
+            // Fallback: verifica localStorage diretamente
+            isMock = localStorage.getItem('mockMode') === 'true';
+            console.log('  Usando fallback localStorage:', isMock);
+        }
+        
+        if (isMock) {
+            console.log('✅ Modo mockado detectado, carregando chats do Mock...');
+            try {
+                if (!mock || !mock.getChats) {
+                    throw new Error('Mock.getChats não disponível');
+                }
+                console.log('  Chamando mock.getChats()...');
+                const chats = await mock.getChats();
+                console.log('✅ Chats recebidos do Mock:', chats ? chats.length : 0);
+                console.log('  Chats:', chats);
+                
+                // Tenta usar Chat.renderChats se disponível
+                const chatModule = getChatModule();
+                if (chatModule && chatModule.renderChats) {
+                    console.log('✅ Usando Chat.renderChats...');
+                    try {
+                        chatListEl.innerHTML = chatModule.renderChats(chats, 'selectChat');
+                        console.log('✅ Chats renderizados com Chat.renderChats');
+                    } catch (renderErr) {
+                        console.error('❌ Erro ao renderizar com Chat.renderChats:', renderErr);
+                        throw renderErr;
+                    }
+                } else {
+                    console.log('⚠️ Chat.renderChats não disponível, usando fallback...');
+                    // Fallback: renderiza chats simples
+                    try {
+                        const html = chats.map((chat, index) => {
+                            try {
+                                const chatId = chat.id && chat.id._serialized ? chat.id._serialized : (chat.id || `unknown-${index}`);
+                                const name = chat.name || (typeof chatId === 'string' ? chatId.split('@')[0] : 'Desconhecido');
+                                const lastMsg = chat.lastMessage || {};
+                                const lastMsgText = (lastMsg.body || '').substring(0, 50); // Limita tamanho
+                                const lastMsgTime = lastMsg.timestamp
+            ? new Date(lastMsg.timestamp * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+            : '';
+        const unread = chat.unreadCount > 0
+            ? `<span class="unread-badge">${chat.unreadCount}</span>`
+            : '';
+
+        return `
+                                    <div class="chat-item" data-chat-id="${chatId}" onclick="if (typeof window.selectChat === 'function') { window.selectChat('${chatId}'); } else { alert('Função selectChat não disponível'); }">
+                <div class="chat-avatar">
+                    <div class="avatar-placeholder">👤</div>
+                </div>
+                <div class="chat-info">
+                    <div class="chat-header">
+                        <div class="chat-name">${name}</div>
+                        <div class="chat-time">${lastMsgTime}</div>
+                    </div>
+                    <div class="chat-preview">
+                                                <div class="chat-message">${lastMsgText}</div>
+                        ${unread}
+                    </div>
+                </div>
+            </div>
+        `;
+                            } catch (chatErr) {
+                                console.error(`❌ Erro ao renderizar chat ${index}:`, chatErr);
+                                return '';
+                            }
+                        }).filter(html => html).join('');
+                        
+                        chatListEl.innerHTML = html;
+                        console.log('✅ Chats renderizados com fallback');
+                    } catch (renderErr) {
+                        console.error('❌ Erro ao renderizar chats com fallback:', renderErr);
+                        throw renderErr;
+                    }
+                }
+                console.log('✅ Lista de chats renderizada com sucesso!');
+                return;
+            } catch (err) {
+                console.error('❌ Erro ao carregar chats do Mock:', err);
+                console.error('  Tipo do erro:', typeof err);
+                console.error('  Mensagem:', err.message);
+                console.error('  Stack:', err.stack);
+                throw err;
+            }
+        }
+        
+        // Modo normal: usa Chat module
+        const chatModule = getChatModule();
+        if (!chatModule || !chatModule.loadChats) {
+            console.log('⚠️ Chat.loadChats não disponível, aguardando...');
             setTimeout(loadChats, 100);
             return;
         }
         
-        const chats = await Chat.loadChats();
-        if (Chat.renderChats) {
-            chatListEl.innerHTML = Chat.renderChats(chats, 'selectChat');
+        console.log('✅ Carregando chats via Chat.loadChats...');
+        const chats = await chatModule.loadChats();
+        console.log('✅ Chats recebidos:', chats ? chats.length : 0);
+        
+        if (chatModule.renderChats) {
+            chatListEl.innerHTML = chatModule.renderChats(chats, 'selectChat');
+            console.log('✅ Chats renderizados com sucesso!');
+    } else {
+            console.warn('⚠️ Chat.renderChats não disponível');
         }
     } catch (error) {
-        console.error('Erro ao carregar chats:', error);
-        if (typeof UI !== 'undefined' && UI.notify) {
-            UI.notify('Erro ao carregar chats', 'error');
+        console.error('❌ Erro ao carregar chats:', error);
+        console.error('Stack:', error.stack);
+        const uiModule = getUIModule();
+        if (uiModule && uiModule.notify) {
+            uiModule.notify('Erro ao carregar chats', 'error');
         }
     }
 }
 
-// Torna loadChats global
+// Torna loadChats global - usa a função diretamente, não um wrapper
 window.loadChats = loadChats;
+
+// Log para confirmar que a função foi definida
+console.log('✅ window.loadChats definida:', typeof window.loadChats);
 
 async function selectChat(chatId) {
     console.log('selectChat chamado com:', chatId);
+    console.log('Versão selectChat: 3.0');
     
-    // Define chat atual
-    if (typeof Chat !== 'undefined' && Chat.setCurrentChat) {
-        Chat.setCurrentChat(chatId);
+    // Define chatModule no escopo da função - NUNCA use Chat diretamente!
+    let chatModule = null;
+    try {
+        chatModule = getChatModule();
+    } catch (err) {
+        console.error('Erro ao obter chatModule:', err);
+    }
+    
+    try {
+        // Define chat atual - verifica de forma segura
+        if (chatModule && chatModule.setCurrentChat) {
+            chatModule.setCurrentChat(chatId);
+        }
+    } catch (err) {
+        console.warn('⚠️ Erro ao definir chat atual:', err);
     }
     
     // Atualiza UI - marca o item clicado como ativo
@@ -333,17 +561,19 @@ async function selectChat(chatId) {
     
     try {
         // Verifica se está em modo mockado
-        const mockModule = (typeof Mock !== 'undefined' ? Mock : null) || (typeof window.Mock !== 'undefined' ? window.Mock : null);
+        const mockModule = getMockModule();
         if (mockModule && mockModule.isMockMode && mockModule.isMockMode()) {
-            console.log('Carregando mensagens do Mock...');
+            console.log('✅ Carregando mensagens do Mock...');
             const messages = await mockModule.getMessages(chatId);
-            console.log('Mensagens recebidas:', messages);
+            console.log('✅ Mensagens recebidas:', messages);
             renderMessages(messages);
-        } else if (typeof Chat !== 'undefined' && Chat.selectChat) {
+        } else if (chatModule && chatModule.selectChat) {
             // Usa Chat.selectChat se disponível
-            await Chat.selectChat(chatId, renderMessages);
+            console.log('✅ Usando Chat.selectChat...');
+            await chatModule.selectChat(chatId, renderMessages);
         } else {
             // Fallback para API
+            console.log('⚠️ Usando fallback API...');
             const apiModule = (typeof API !== 'undefined' ? API : null) || (typeof window.API !== 'undefined' ? window.API : null);
             if (apiModule && apiModule.getMessages) {
                 const messages = await apiModule.getMessages(session, chatId);
@@ -353,8 +583,9 @@ async function selectChat(chatId) {
             }
         }
     } catch (error) {
-        console.error('Erro ao carregar mensagens:', error);
-        const uiModule = (typeof UI !== 'undefined' ? UI : null) || (typeof window.UI !== 'undefined' ? window.UI : null);
+        console.error('❌ Erro ao carregar mensagens:', error);
+        console.error('Stack:', error.stack);
+        const uiModule = getUIModule();
         if (uiModule && uiModule.notify) {
             uiModule.notify('Erro ao carregar mensagens', 'error');
         }
@@ -377,55 +608,112 @@ function renderMessages(messages) {
         return;
     }
     
-    // Tenta usar Chat.createMessageHtml, senão cria HTML simples
-    const chatModule = (typeof Chat !== 'undefined' ? Chat : null) || (typeof window.Chat !== 'undefined' ? window.Chat : null);
-    if (chatModule && chatModule.createMessageHtml) {
-        chatMessagesEl.innerHTML = messages.map(msg => chatModule.createMessageHtml(msg)).join('');
-    } else {
-        // Fallback: cria HTML simples
-        chatMessagesEl.innerHTML = messages.map(msg => {
-            const messageText = msg.body || msg.text || '';
-            const time = msg.timestamp ? new Date(msg.timestamp * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
-            return `
-                <div class="message ${msg.fromMe ? 'sent' : 'received'}">
-                    <div class="message-content">
-                        ${messageText ? `<div class="message-text">${messageText}</div>` : ''}
-                        <div class="message-time">${time}</div>
+    try {
+        // Tenta usar Chat.createMessageHtml, senão cria HTML simples
+        const chatModule = getChatModule();
+        if (chatModule && chatModule.createMessageHtml) {
+            try {
+                chatMessagesEl.innerHTML = messages.map(msg => chatModule.createMessageHtml(msg)).join('');
+                console.log('✅ Mensagens renderizadas com Chat.createMessageHtml');
+            } catch (renderErr) {
+                console.error('❌ Erro ao renderizar com Chat.createMessageHtml:', renderErr);
+                // Fallback para renderização simples
+                throw renderErr;
+            }
+        } else {
+            // Fallback: cria HTML simples
+            chatMessagesEl.innerHTML = messages.map(msg => {
+                const messageText = msg.body || msg.text || '';
+                const time = msg.timestamp ? new Date(msg.timestamp * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+                return `
+                    <div class="message ${msg.fromMe ? 'sent' : 'received'}">
+                        <div class="message-content">
+                            ${messageText ? `<div class="message-text">${messageText}</div>` : ''}
+                            <div class="message-time">${time}</div>
+                        </div>
                     </div>
-                </div>
-            `;
-        }).join('');
+                `;
+            }).join('');
+            console.log('✅ Mensagens renderizadas com fallback simples');
+        }
+        
+        chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+    } catch (error) {
+        console.error('❌ Erro ao renderizar mensagens:', error);
+        console.error('Stack:', error.stack);
+        chatMessagesEl.innerHTML = '<div style="text-align: center; padding: 20px; color: #e74c3c;">Erro ao carregar mensagens</div>';
     }
-    
-    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
 }
 
 // Torna renderMessages global
 window.renderMessages = renderMessages;
 
 async function sendMessage() {
-    if (!Chat.getCurrentChat() || !messageInput.value.trim()) return;
+    const chatModule = getChatModule();
+    const currentChatId = chatModule && chatModule.getCurrentChat ? chatModule.getCurrentChat() : null;
+    const messageInputEl = document.getElementById('message-input');
     
-    const message = messageInput.value.trim();
-    messageInput.value = '';
+    if (!currentChatId || !messageInputEl || !messageInputEl.value.trim()) return;
+    
+    const message = messageInputEl.value.trim();
+    messageInputEl.value = '';
     
     try {
-        const result = await Chat.sendMessage(message);
+        const mockModule = getMockModule();
+        const uiModule = getUIModule();
         
-        // Se estiver em modo mockado, adiciona a mensagem enviada à tela
-        if (Mock && Mock.isMockMode() && result && result.message) {
-            const messageHtml = Chat.createMessageHtml(result.message);
-            chatMessages.insertAdjacentHTML('beforeend', messageHtml);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+        let result;
+        if (mockModule && mockModule.isMockMode && mockModule.isMockMode()) {
+            // Modo mockado
+            result = await mockModule.sendMessage(currentChatId, message);
+            
+            // Adiciona a mensagem enviada à tela
+            if (result && result.message) {
+                const chatMessagesEl = document.getElementById('chat-messages');
+                if (chatMessagesEl) {
+                    const messageHtml = (chatModule && chatModule.createMessageHtml) 
+                        ? chatModule.createMessageHtml(result.message)
+                        : createSimpleMessageHtml(result.message);
+                    chatMessagesEl.insertAdjacentHTML('beforeend', messageHtml);
+                    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+                }
+            }
+        } else if (chatModule && chatModule.sendMessage) {
+            // Usa Chat.sendMessage
+            result = await chatModule.sendMessage(message);
+    } else {
+            throw new Error('Nenhum método disponível para enviar mensagem');
         }
     } catch (error) {
-        UI.notify('Erro ao enviar mensagem', 'error');
+        console.error('Erro ao enviar mensagem:', error);
+        const uiModule = getUIModule();
+        if (uiModule && uiModule.notify) {
+            uiModule.notify('Erro ao enviar mensagem', 'error');
+        }
     }
 }
 
+// Função auxiliar para criar HTML de mensagem simples
+function createSimpleMessageHtml(message) {
+    const messageText = message.body || message.text || '';
+    const time = message.timestamp ? new Date(message.timestamp * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+    return `
+        <div class="message ${message.fromMe ? 'sent' : 'received'}">
+            <div class="message-content">
+                ${messageText ? `<div class="message-text">${messageText}</div>` : ''}
+                <div class="message-time">${time}</div>
+            </div>
+        </div>
+    `;
+}
+
+// Torna createSimpleMessageHtml global
+window.createSimpleMessageHtml = createSimpleMessageHtml;
+
 function handleNewMessage(messageData) {
     const chatId = messageData.from;
-    const currentChatId = Chat.getCurrentChat();
+    const chatModule = getChatModule();
+    const currentChatId = chatModule && chatModule.getCurrentChat ? chatModule.getCurrentChat() : null;
     
     if (currentChatId && chatId === currentChatId) {
         const messageObj = {
@@ -436,18 +724,26 @@ function handleNewMessage(messageData) {
             media: messageData.media
         };
         
-        const messageHtml = Chat.createMessageHtml(messageObj);
-        chatMessages.insertAdjacentHTML('beforeend', messageHtml);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        const chatMessagesEl = document.getElementById('chat-messages');
+        if (chatMessagesEl) {
+            const messageHtml = (chatModule && chatModule.createMessageHtml) 
+                ? chatModule.createMessageHtml(messageObj)
+                : createSimpleMessageHtml(messageObj);
+            chatMessagesEl.insertAdjacentHTML('beforeend', messageHtml);
+            chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+        }
     }
     
-    loadChats();
+    if (typeof loadChats === 'function' || typeof window.loadChats === 'function') {
+        (loadChats || window.loadChats)();
+    }
 }
 
 // UI
 function showChat() {
-    if (typeof UI !== 'undefined' && UI.showChat) {
-        UI.showChat();
+    const ui = getUIModule();
+    if (ui && ui.showChat) {
+        ui.showChat();
     } else {
         // Fallback direto
         const loginScreen = document.getElementById('login-screen');
@@ -456,28 +752,33 @@ function showChat() {
         if (chatInterface) chatInterface.style.display = 'flex';
     }
     // Só conecta WebSocket se não estiver em modo mockado
-    if (typeof Mock !== 'undefined' && Mock.isMockMode()) {
+    const mock = getMockModule();
+    if (mock && mock.isMockMode && mock.isMockMode()) {
         // Modo mockado, não conecta WebSocket
     } else if (typeof WebSocket !== 'undefined' && WebSocket.connectWebSocket) {
         WebSocket.connectWebSocket(phone, wsHandlers);
     }
     if (typeof loadChats === 'function') {
-        loadChats();
-    }
+    loadChats();
+}
 }
 
 // Torna showChat global
 window.showChat = showChat;
 
 function showLogin() {
-    UI.showLogin();
+    const ui = getUIModule();
+    if (ui) ui.showLogin();
     WebSocket.disconnectWebSocket();
 }
 
 function showSessionSettings() {
-    UI.showLogin();
+    const ui = getUIModule();
+    if (ui) {
+        ui.showLogin();
+        ui.notify('Tela de configurações da sessão', 'info');
+    }
     checkStatus();
-    UI.notify('Tela de configurações da sessão', 'info');
 }
 
 // Busca
@@ -493,7 +794,8 @@ document.getElementById('search-input').oninput = (e) => {
 document.addEventListener('DOMContentLoaded', () => {
     // Inicializa estilos de notificação
     if (typeof UI !== 'undefined') {
-        UI.initNotificationStyles();
+        const ui = getUIModule();
+        if (ui && ui.initNotificationStyles) ui.initNotificationStyles();
     }
     
     // Inicializa elementos DOM
@@ -607,11 +909,13 @@ messageInput.onkeypress = (e) => {
     }
     
     // Verifica se já está em modo mockado
-    if (Mock && Mock.isMockMode()) {
+    const mock = getMockModule();
+    if (mock && mock.isMockMode && mock.isMockMode()) {
         showChat();
         loadChats();
     } else {
-        UI.showLogin();
+        const ui = getUIModule();
+    if (ui) ui.showLogin();
         
     const sessionControls = document.getElementById('session-controls');
     if (sessionControls) {
