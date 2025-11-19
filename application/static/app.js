@@ -31,6 +31,9 @@ if (DEBUG) {
 let phone = localStorage.getItem('phone') || '';
 let session = 'default';
 
+// Armazena a última mensagem da conversa atual
+let lastMessage = null;
+
 // Funções auxiliares para acessar módulos de forma segura
 // Versão: 2.0 - Todas as referências diretas removidas
 function getUIModule() {
@@ -446,6 +449,14 @@ function renderMessages(messages) {
         
         debugLog(`Mensagens ordenadas: ${messages.length} -> ${sortedMessages.length}`);
         
+        // Armazena a última mensagem (a mais recente)
+        if (sortedMessages.length > 0) {
+            lastMessage = sortedMessages[sortedMessages.length - 1];
+            debugLog('Última mensagem armazenada:', lastMessage);
+        } else {
+            lastMessage = null;
+        }
+        
         // Tenta usar Chat.createMessageHtml, senão cria HTML simples
         const chatModule = getChatModule();
         
@@ -521,16 +532,16 @@ function renderMessages(messages) {
                     }
                 }
 
-                return `
+        return `
                     <div class="message ${msg.fromMe ? 'sent' : 'received'}">
                         <div class="message-content">
                             ${showSenderName ? `<div class="message-sender">${senderName}</div>` : ''}
                             ${messageText ? `<div class="message-text">${messageText}</div>` : ''}
                             <div class="message-time">${time}</div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
+                </div>
+            </div>
+        `;
+    }).join('');
             debugLog('✅ Mensagens renderizadas com fallback simples');
         }
         
@@ -550,9 +561,20 @@ async function sendMessage() {
     const currentChatId = chatModule && chatModule.getCurrentChat ? chatModule.getCurrentChat() : null;
     const messageInputEl = document.getElementById('message-input');
     
-    if (!currentChatId || !messageInputEl || !messageInputEl.value.trim()) return;
+    if (!currentChatId || !messageInputEl) return;
     
     const message = messageInputEl.value.trim();
+    if (!message) return;
+    
+    // Atualiza a última mensagem antes de enviar
+    lastMessage = {
+        body: message,
+        fromMe: true,
+        timestamp: Math.floor(Date.now() / 1000),
+        hasMedia: false
+    };
+    debugLog('Última mensagem atualizada (mensagem enviada):', lastMessage);
+    
     messageInputEl.value = '';
     
     try {
@@ -655,6 +677,10 @@ function handleNewMessage(messageData) {
             media: messageData.media
         };
         
+        // Atualiza a última mensagem
+        lastMessage = messageObj;
+        debugLog('Última mensagem atualizada (nova mensagem recebida):', lastMessage);
+        
         const chatMessagesEl = document.getElementById('chat-messages');
         if (chatMessagesEl) {
             const messageHtml = (chatModule && chatModule.createMessageHtml) 
@@ -718,12 +744,106 @@ document.getElementById('search-input').oninput = (e) => {
     });
 };
 
+// Funcionalidade de última mensagem
+function showLastMessage() {
+    if (!lastMessage) {
+        const uiModule = getUIModule();
+        if (uiModule && uiModule.notify) {
+            uiModule.notify('Nenhuma mensagem disponível', 'info');
+        }
+        return;
+    }
+    
+    const lastMessageBox = document.getElementById('last-message-box');
+    const lastMessageText = document.getElementById('last-message-text');
+    
+    if (!lastMessageBox || !lastMessageText) {
+        debugError('Elementos da caixa de última mensagem não encontrados');
+        return;
+    }
+    
+    // Extrai o texto da mensagem
+    const messageText = lastMessage.body || lastMessage.text || '';
+    
+    if (!messageText) {
+        const uiModule = getUIModule();
+        if (uiModule && uiModule.notify) {
+            uiModule.notify('A última mensagem não contém texto', 'info');
+        }
+        return;
+    }
+    
+    // Mostra o texto da mensagem
+    lastMessageText.textContent = messageText;
+    lastMessageBox.style.display = 'block';
+    
+    debugLog('Caixa de última mensagem exibida:', messageText);
+}
+
+function hideLastMessage() {
+    const lastMessageBox = document.getElementById('last-message-box');
+    if (lastMessageBox) {
+        lastMessageBox.style.display = 'none';
+    }
+}
+
+function copyLastMessageToInput() {
+    if (!lastMessage) {
+        return;
+    }
+    
+    const messageText = lastMessage.body || lastMessage.text || '';
+    if (!messageText) {
+        return;
+    }
+    
+    const messageInput = document.getElementById('message-input');
+    if (messageInput) {
+        messageInput.value = messageText;
+        messageInput.focus();
+        // Move o cursor para o final do texto
+        messageInput.setSelectionRange(messageText.length, messageText.length);
+        debugLog('Mensagem copiada para a barra de texto:', messageText);
+        
+        // Fecha a caixa
+        hideLastMessage();
+    }
+}
+
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
     // Inicializa estilos de notificação
     if (typeof UI !== 'undefined') {
         const ui = getUIModule();
         if (ui && ui.initNotificationStyles) ui.initNotificationStyles();
+    }
+    
+    // Event listeners para última mensagem
+    const lastMessageBtn = document.getElementById('last-message-btn');
+    const closeLastMessageBtn = document.getElementById('close-last-message-btn');
+    const lastMessageText = document.getElementById('last-message-text');
+    
+    if (lastMessageBtn) {
+        lastMessageBtn.addEventListener('click', showLastMessage);
+    }
+    
+    if (closeLastMessageBtn) {
+        closeLastMessageBtn.addEventListener('click', hideLastMessage);
+    }
+    
+    if (lastMessageText) {
+        lastMessageText.addEventListener('click', copyLastMessageToInput);
+    }
+    
+    // Fecha a caixa ao clicar fora dela
+    const lastMessageBox = document.getElementById('last-message-box');
+    if (lastMessageBox) {
+        lastMessageBox.addEventListener('click', (e) => {
+            // Se clicar na própria caixa (não no conteúdo), fecha
+            if (e.target === lastMessageBox) {
+                hideLastMessage();
+            }
+        });
     }
     
     // Inicializa elementos DOM

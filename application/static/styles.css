@@ -652,6 +652,7 @@ body {
     align-items: center;
     gap: 10px;
     flex-shrink: 0;
+    position: relative;
 }
 
 .input-actions {
@@ -675,6 +676,81 @@ body {
 
 .send-btn {
     color: #25d366;
+}
+
+/* Caixa de última mensagem */
+.last-message-box {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    max-width: 500px;
+    width: calc(100% - 40px);
+    animation: slideUp 0.2s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.last-message-content {
+    padding: 12px;
+}
+
+.last-message-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #65676b;
+}
+
+.close-last-message-btn {
+    background: none;
+    border: none;
+    color: #65676b;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+.close-last-message-btn:hover {
+    background: #f0f2f5;
+}
+
+.last-message-text {
+    padding: 10px;
+    background: #f0f2f5;
+    border-radius: 6px;
+    font-size: 14px;
+    color: #1c1e21;
+    cursor: pointer;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    transition: background 0.2s ease;
+}
+
+.last-message-text:hover {
+    background: #e4e6eb;
 }
 
 .message-input-wrapper {

@@ -229,6 +229,9 @@
                         <input type="text" id="message-input" placeholder="Digite uma mensagem" class="message-input">
                     </div>
                     <div class="input-actions">
+                        <button id="last-message-btn" class="input-btn" title="Última mensagem">
+                            <i class="fas fa-reply"></i>
+                        </button>
                         <button class="input-btn" title="Emoji">
                             <i class="far fa-smile"></i>
                         </button>
@@ -270,6 +273,19 @@
             </div>
         </div>
     </template>
+
+    <!-- Caixa de última mensagem -->
+    <div id="last-message-box" class="last-message-box" style="display: none;">
+        <div class="last-message-content">
+            <div class="last-message-header">
+                <span>Última mensagem</span>
+                <button id="close-last-message-btn" class="close-last-message-btn" title="Fechar">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="last-message-text" class="last-message-text"></div>
+        </div>
+    </div>
 
     <script src="/static/api.js?v=3.0"></script>
     <script src="/static/websocket.js?v=3.0"></script>
