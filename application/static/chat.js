@@ -3,6 +3,8 @@
  * Controla exibição e manipulação de conversas.
  */
 
+console.log('📱 chat.js carregando...');
+
 const DEFAULT_SESSION = 'default';
 let currentChat = null;
 
@@ -15,7 +17,16 @@ const Chat = {
      */
     async loadChats() {
         try {
-            return await API.getChats(DEFAULT_SESSION);
+            // Se estiver em modo mockado, usa dados mockados
+            const mockModule = (typeof Mock !== 'undefined' ? Mock : null) || (typeof window.Mock !== 'undefined' ? window.Mock : null);
+            if (mockModule && mockModule.isMockMode && mockModule.isMockMode()) {
+                return await mockModule.getChats();
+            }
+            const apiModule = (typeof API !== 'undefined' ? API : null) || (typeof window.API !== 'undefined' ? window.API : null);
+            if (apiModule && apiModule.getChats) {
+                return await apiModule.getChats(DEFAULT_SESSION);
+            }
+            return [];
         } catch (error) {
             console.error('Erro ao carregar chats:', error);
             return [];
@@ -29,8 +40,18 @@ const Chat = {
         currentChat = chatId;
         
         try {
-            const messages = await API.getMessages(DEFAULT_SESSION, chatId);
-            renderMessages(messages);
+            // Se estiver em modo mockado, usa dados mockados
+            const mockModule = (typeof Mock !== 'undefined' ? Mock : null) || (typeof window.Mock !== 'undefined' ? window.Mock : null);
+            if (mockModule && mockModule.isMockMode && mockModule.isMockMode()) {
+                const messages = await mockModule.getMessages(chatId);
+                if (renderMessages) renderMessages(messages);
+            } else {
+                const apiModule = (typeof API !== 'undefined' ? API : null) || (typeof window.API !== 'undefined' ? window.API : null);
+                if (apiModule && apiModule.getMessages) {
+                    const messages = await apiModule.getMessages(DEFAULT_SESSION, chatId);
+                    if (renderMessages) renderMessages(messages);
+                }
+            }
         } catch (error) {
             console.error('Erro ao carregar mensagens:', error);
         }
@@ -43,7 +64,17 @@ const Chat = {
         if (!currentChat || !text.trim()) return;
         
         try {
-            await API.sendTextMessage(DEFAULT_SESSION, currentChat, text.trim());
+            // Se estiver em modo mockado, usa dados mockados
+            const mockModule = (typeof Mock !== 'undefined' ? Mock : null) || (typeof window.Mock !== 'undefined' ? window.Mock : null);
+            if (mockModule && mockModule.isMockMode && mockModule.isMockMode()) {
+                const result = await mockModule.sendMessage(currentChat, text.trim());
+                return result;
+            } else {
+                const apiModule = (typeof API !== 'undefined' ? API : null) || (typeof window.API !== 'undefined' ? window.API : null);
+                if (apiModule && apiModule.sendTextMessage) {
+                    await apiModule.sendTextMessage(DEFAULT_SESSION, currentChat, text.trim());
+                }
+            }
         } catch (error) {
             console.error('Erro ao enviar mensagem:', error);
             throw error;
@@ -139,7 +170,7 @@ const Chat = {
             const ackIcon = Chat.getAckIcon(lastMsg?.ack, lastMsg?.fromMe);
 
             return `
-                <div class="chat-item" onclick="${onChatSelect}('${chatId}')">
+                <div class="chat-item" data-chat-id="${chatId}" onclick="window.selectChat('${chatId}'); event.stopPropagation(); return false;">
                     <div class="chat-avatar">
                         <div class="avatar-placeholder">👤</div>
                     </div>
@@ -161,3 +192,7 @@ const Chat = {
         }).join('');
     }
 };
+
+// Expõe globalmente
+window.Chat = Chat;
+console.log('✅ Chat exposto globalmente:', typeof window.Chat);

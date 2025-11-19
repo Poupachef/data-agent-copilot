@@ -26,6 +26,147 @@
                         <input type="text" id="main-phone-input" placeholder="Digite seu número de telefone (ex: 5511999999999)" class="phone-input" required>
                     </div>
                     
+                    <!-- Botão para modo mockado -->
+                    <div style="margin: 20px 0; padding: 15px; background: #e3f2fd; border-radius: 8px; border: 1px solid #90caf9;">
+                        <p style="margin: 0 0 10px 0; color: #1976d2; font-size: 14px;">
+                            <i class="fas fa-flask" style="margin-right: 8px;"></i>
+                            <strong>Modo de Teste:</strong> Teste a interface sem conectar ao WhatsApp
+                        </p>
+                        <script>
+                            // Define a função ANTES do botão ser renderizado
+                            window.startMockMode = function() {
+                                console.log('=== startMockMode chamado (inline) ===');
+                                console.log('Mock:', typeof Mock, typeof window.Mock);
+                                console.log('UI:', typeof UI, typeof window.UI);
+                                console.log('Chat:', typeof Chat, typeof window.Chat);
+                                
+                                let attempts = 0;
+                                const maxAttempts = 50; // 10 segundos máximo
+                                
+                                // Se os módulos não estão carregados, aguarda
+                                function tryStart() {
+                                    attempts++;
+                                    
+                                    // Tenta encontrar os módulos de várias formas
+                                    const mockModule = (typeof Mock !== 'undefined' ? Mock : null) || (typeof window.Mock !== 'undefined' ? window.Mock : null);
+                                    const uiModule = (typeof UI !== 'undefined' ? UI : null) || (typeof window.UI !== 'undefined' ? window.UI : null);
+                                    const chatModule = (typeof Chat !== 'undefined' ? Chat : null) || (typeof window.Chat !== 'undefined' ? window.Chat : null);
+                                    
+                                    if (attempts === 1 || attempts % 5 === 0) {
+                                        console.log('Verificando módulos (tentativa ' + attempts + '):');
+                                        console.log('  Mock:', !!mockModule, typeof Mock, typeof window.Mock);
+                                        console.log('  UI:', !!uiModule, typeof UI, typeof window.UI);
+                                        console.log('  Chat:', !!chatModule, typeof Chat, typeof window.Chat);
+                                    }
+                                    
+                                    // Só precisa de Mock e UI, Chat pode ser opcional
+                                    if (!mockModule || !uiModule) {
+                                        if (attempts < maxAttempts) {
+                                            if (attempts % 5 === 0) {
+                                                console.log('⏳ Aguardando módulos carregarem... (tentativa ' + attempts + '/' + maxAttempts + ')');
+                                            }
+                                            setTimeout(tryStart, 200);
+                                            return;
+                                        } else {
+                                            console.error('❌ Timeout: módulos não carregaram após 10 segundos');
+                                            console.error('Estado final:');
+                                            console.error('  Mock:', typeof Mock, typeof window.Mock);
+                                            console.error('  UI:', typeof UI, typeof window.UI);
+                                            console.error('  Chat:', typeof Chat, typeof window.Chat);
+                                            alert('Erro: Módulos não carregaram. Verifique o console e recarregue a página.');
+                                            return;
+                                        }
+                                    }
+                                    
+                                    try {
+                                        console.log('✅ Módulos carregados, iniciando modo mockado...');
+                                        
+                                        // Ativa modo mockado
+                                        if (mockModule.enableMockMode) {
+                                            mockModule.enableMockMode();
+                                        } else {
+                                            localStorage.setItem('mockMode', 'true');
+                                        }
+                                        
+                                        // Mostra notificação
+                                        if (uiModule.notify) {
+                                            uiModule.notify('Modo mockado ativado!', 'success');
+                                        }
+                                        
+                                        // Mostra chat
+                                        const loginScreen = document.getElementById('login-screen');
+                                        const chatInterface = document.getElementById('chat-interface');
+                                        if (loginScreen) loginScreen.style.display = 'none';
+                                        if (chatInterface) chatInterface.style.display = 'flex';
+                                        
+                                        // Carrega chats - tenta com Chat se disponível, senão usa Mock diretamente
+                                        setTimeout(() => {
+                                            if (chatModule && chatModule.loadChats) {
+                                                chatModule.loadChats().then(chats => {
+                                                    const chatList = document.getElementById('chat-list');
+                                                    if (chatList && chatModule.renderChats) {
+                                                        chatList.innerHTML = chatModule.renderChats(chats, 'selectChat');
+                                                    }
+                                                }).catch(err => {
+                                                    console.error('Erro ao carregar chats:', err);
+                                                });
+                                            } else if (mockModule.getChats) {
+                                                // Fallback: usa Mock diretamente
+                                                console.log('Usando Mock diretamente para carregar chats...');
+                                                mockModule.getChats().then(chats => {
+                                                    const chatList = document.getElementById('chat-list');
+                                                    if (chatList) {
+                                                        // Renderiza chats simples
+                                                        chatList.innerHTML = chats.map(chat => {
+                                                            const chatId = chat.id._serialized || chat.id;
+                                                            const name = chat.name || chatId.split('@')[0] || 'Desconhecido';
+                                                            const lastMsg = chat.lastMessage;
+                                                            const lastMsgText = lastMsg?.body || '';
+                                                            const lastMsgTime = lastMsg?.timestamp
+                                                                ? new Date(lastMsg.timestamp * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                                                                : '';
+                                                            const unread = chat.unreadCount > 0
+                                                                ? `<span class="unread-badge">${chat.unreadCount}</span>`
+                                                                : '';
+                                                            
+                                                            return `
+                                                                <div class="chat-item" data-chat-id="${chatId}" onclick="window.selectChat('${chatId}'); event.stopPropagation(); return false;">
+                                                                    <div class="chat-avatar">
+                                                                        <div class="avatar-placeholder">👤</div>
+                                                                    </div>
+                                                                    <div class="chat-info">
+                                                                        <div class="chat-header">
+                                                                            <div class="chat-name">${name}</div>
+                                                                            <div class="chat-time">${lastMsgTime}</div>
+                                                                        </div>
+                                                                        <div class="chat-preview">
+                                                                            <div class="chat-message">${lastMsgText}</div>
+                                                                            ${unread}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            `;
+                                                        }).join('');
+                                                    }
+                                                });
+                                            }
+                                        }, 300);
+                                    } catch (error) {
+                                        console.error('Erro:', error);
+                                        alert('Erro: ' + error.message);
+                                    }
+                                }
+                                
+                                tryStart();
+                            };
+                            console.log('✅ window.startMockMode definida no HTML inline');
+                        </script>
+                        <button id="start-mock-btn" class="btn btn-primary" style="width: 100%; cursor: pointer;" type="button" onclick="console.log('CLIQUE DETECTADO!'); window.startMockMode();">
+                            <i class="fas fa-play-circle"></i>
+                            Iniciar Chat Mockado
+                        </button>
+                    </div>
+                    
                     <!-- Session Management -->
                     <div id="session-management" class="session-management" style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
                         <h4 style="margin: 0 0 15px 0; color: #333; display: flex; align-items: center;">
@@ -274,6 +415,7 @@
     <script src="/static/api.js"></script>
     <script src="/static/websocket.js"></script>
     <script src="/static/session.js"></script>
+    <script src="/static/mock.js"></script>
     <script src="/static/chat.js"></script>
     <script src="/static/ui.js"></script>
     <script src="/static/app.js"></script>

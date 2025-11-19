@@ -3,6 +3,8 @@
  * Controla exibição de telas, notificações e atualizações de UI.
  */
 
+console.log('📱 ui.js carregando...');
+
 /**
  * Namespace de UI.
  */
@@ -171,3 +173,7 @@ const UI = {
         document.head.appendChild(style);
     }
 };
+
+// Expõe globalmente
+window.UI = UI;
+console.log('✅ UI exposto globalmente:', typeof window.UI);
