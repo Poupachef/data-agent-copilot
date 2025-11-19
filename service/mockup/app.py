@@ -409,8 +409,12 @@ async def get_chat_messages(
     # Decodifica o chat_id se necessário
     decoded_chat_id = chat_id.replace("%40", "@")
     messages = MOCK_MESSAGES.get(decoded_chat_id, [])
-    # Retorna as últimas 'limit' mensagens
-    return JSONResponse(messages[-limit:])
+    
+    # Ordena mensagens por timestamp (crescente: mais antigas primeiro)
+    sorted_messages = sorted(messages, key=lambda m: m.get("timestamp", 0))
+    
+    # Retorna as últimas 'limit' mensagens (já ordenadas)
+    return JSONResponse(sorted_messages[-limit:])
 
 
 # Message sending endpoints

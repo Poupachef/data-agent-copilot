@@ -52,7 +52,17 @@ const Chat = {
             const apiModule = (typeof API !== 'undefined' ? API : null) || (typeof window.API !== 'undefined' ? window.API : null);
             if (apiModule && apiModule.getMessages) {
                 const messages = await apiModule.getMessages(CHAT_DEFAULT_SESSION, chatId);
-                if (renderMessages) renderMessages(messages);
+                // Ordena mensagens por timestamp antes de renderizar
+                if (messages && Array.isArray(messages)) {
+                    const sortedMessages = messages.sort((a, b) => {
+                        const timestampA = a.timestamp || 0;
+                        const timestampB = b.timestamp || 0;
+                        return timestampA - timestampB;
+                    });
+                    if (renderMessages) renderMessages(sortedMessages);
+                } else if (renderMessages) {
+                    renderMessages(messages);
+                }
             }
         } catch (error) {
             chatDebugError('Erro ao carregar mensagens:', error);

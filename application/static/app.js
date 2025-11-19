@@ -386,11 +386,20 @@ function renderMessages(messages) {
     }
     
     try {
+        // Ordena mensagens por timestamp (crescente: mais antigas primeiro, mais recentes por último)
+        const sortedMessages = [...messages].sort((a, b) => {
+            const timestampA = a.timestamp || 0;
+            const timestampB = b.timestamp || 0;
+            return timestampA - timestampB;
+        });
+        
+        debugLog(`Mensagens ordenadas: ${messages.length} -> ${sortedMessages.length}`);
+        
         // Tenta usar Chat.createMessageHtml, senão cria HTML simples
         const chatModule = getChatModule();
         if (chatModule && chatModule.createMessageHtml) {
             try {
-                chatMessagesEl.innerHTML = messages.map(msg => chatModule.createMessageHtml(msg)).join('');
+                chatMessagesEl.innerHTML = sortedMessages.map(msg => chatModule.createMessageHtml(msg)).join('');
                 debugLog('✅ Mensagens renderizadas com Chat.createMessageHtml');
             } catch (renderErr) {
                 debugError('❌ Erro ao renderizar com Chat.createMessageHtml:', renderErr);
@@ -399,7 +408,7 @@ function renderMessages(messages) {
             }
         } else {
             // Fallback: cria HTML simples
-            chatMessagesEl.innerHTML = messages.map(msg => {
+            chatMessagesEl.innerHTML = sortedMessages.map(msg => {
                 const messageText = msg.body || msg.text || '';
                 const time = msg.timestamp ? new Date(msg.timestamp * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
         return `
