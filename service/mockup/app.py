@@ -83,6 +83,21 @@ MOCK_CHATS = [
         "isGroup": False,
         "isMuted": False,
         "isArchived": False
+    },
+    {
+        "id": {"_serialized": "120363123456789012@g.us"},
+        "name": "Grupo de Trabalho",
+        "unreadCount": 3,
+        "lastMessage": {
+            "id": "msg_grp3",
+            "body": "Reunião amanhã às 10h",
+            "timestamp": int(time.time()) - 600,
+            "fromMe": False,
+            "ack": 1
+        },
+        "isGroup": True,
+        "isMuted": False,
+        "isArchived": False
     }
 ]
 

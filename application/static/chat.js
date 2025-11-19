@@ -21,6 +21,7 @@ function chatDebugError(...args) {
 // session.js carrega antes e já define DEFAULT_SESSION
 const CHAT_DEFAULT_SESSION = 'default';
 let currentChat = null;
+let currentChatInfo = null; // Armazena informações do chat atual (isGroup, etc.)
 
 /**
  * Namespace de chat.
@@ -50,6 +51,54 @@ const Chat = {
         
         try {
             const apiModule = (typeof API !== 'undefined' ? API : null) || (typeof window.API !== 'undefined' ? window.API : null);
+            
+            // Busca informações do chat para saber se é grupo (ANTES de carregar mensagens)
+            if (apiModule && apiModule.getChats) {
+                try {
+                    const chats = await apiModule.getChats(CHAT_DEFAULT_SESSION);
+                    const chatInfo = chats.find(chat => {
+                        const id = chat.id?._serialized || chat.id;
+                        return id === chatId;
+                    });
+                    if (!chats || !Array.isArray(chats)) {
+                        chatDebugError('❌ ERRO: getChats não retornou um array válido:', chats);
+                        currentChatInfo = null;
+                    } else {
+                        const chatInfo = chats.find(chat => {
+                            const id = chat.id?._serialized || chat.id;
+                            return id === chatId;
+                        });
+                        if (chatInfo) {
+                            currentChatInfo = chatInfo;
+                            // Verifica isGroup em _chat.isGroup ou isGroup direto
+                            const isGroup = chatInfo._chat?.isGroup ?? chatInfo.isGroup;
+                            chatDebugLog('Chat info carregado:', { isGroup, name: chatInfo.name, has_chat: !!chatInfo._chat });
+                            
+                            // Log de erro se isGroup não estiver definido
+                            if (typeof isGroup === 'undefined') {
+                                chatDebugError('❌ ERRO: Não foi possível determinar se a conversa é um grupo. Campo isGroup não encontrado em chat.isGroup nem em chat._chat.isGroup. Estrutura do chat:', {
+                                    hasIsGroup: typeof chatInfo.isGroup !== 'undefined',
+                                    has_chat: !!chatInfo._chat,
+                                    has_chat_isGroup: typeof chatInfo._chat?.isGroup !== 'undefined',
+                                    chatKeys: Object.keys(chatInfo),
+                                    chat_chatKeys: chatInfo._chat ? Object.keys(chatInfo._chat) : null
+                                });
+                            }
+                        } else {
+                            chatDebugError('❌ ERRO: Chat não encontrado na lista. chatId:', chatId, 'Chats disponíveis:', chats.map(c => c.id?._serialized || c.id));
+                            currentChatInfo = null;
+                        }
+                    }
+                } catch (e) {
+                    chatDebugError('❌ ERRO ao buscar info do chat:', e);
+                    currentChatInfo = null;
+                }
+            } else {
+                chatDebugError('❌ ERRO: API module ou getChats não disponível');
+                currentChatInfo = null;
+            }
+            
+            // Agora carrega as mensagens (já com as informações do chat disponíveis)
             if (apiModule && apiModule.getMessages) {
                 const messages = await apiModule.getMessages(CHAT_DEFAULT_SESSION, chatId);
                 // Ordena mensagens por timestamp antes de renderizar
@@ -59,7 +108,10 @@ const Chat = {
                         const timestampB = b.timestamp || 0;
                         return timestampA - timestampB;
                     });
-                    if (renderMessages) renderMessages(sortedMessages);
+                    if (renderMessages) {
+                        chatDebugLog('Renderizando mensagens. isGroup:', currentChatInfo?.isGroup);
+                        renderMessages(sortedMessages);
+                    }
                 } else if (renderMessages) {
                     renderMessages(messages);
                 }
@@ -98,6 +150,22 @@ const Chat = {
      */
     setCurrentChat(chatId) {
         currentChat = chatId;
+        // Limpa informações do chat anterior
+        currentChatInfo = null;
+    },
+    
+    /**
+     * Define informações do chat atual.
+     */
+    setCurrentChatInfo(chatInfo) {
+        currentChatInfo = chatInfo;
+    },
+    
+    /**
+     * Obtém informações do chat atual.
+     */
+    getCurrentChatInfo() {
+        return currentChatInfo;
     },
 
     /**
@@ -144,9 +212,69 @@ const Chat = {
         const hasMedia = message.hasMedia && message.media && message.media.url;
         const mediaHtml = hasMedia ? Chat.renderMediaHtml(message.media) : '';
         
+        // Verifica se é grupo - pode estar em _chat.isGroup ou isGroup direto
+        const isGroup = currentChatInfo ? (currentChatInfo._chat?.isGroup ?? currentChatInfo.isGroup) : false;
+        
+        // Log de erro se não conseguir determinar se é grupo
+        if (currentChatInfo === null) {
+            chatDebugError('❌ ERRO: Não foi possível determinar se a conversa é um grupo. currentChatInfo é null.');
+        } else if (typeof isGroup === 'undefined') {
+            chatDebugError('❌ ERRO: Campo isGroup não encontrado em currentChatInfo.isGroup nem em currentChatInfo._chat.isGroup. Estrutura:', {
+                hasIsGroup: typeof currentChatInfo.isGroup !== 'undefined',
+                has_chat: !!currentChatInfo._chat,
+                has_chat_isGroup: typeof currentChatInfo._chat?.isGroup !== 'undefined',
+                chatKeys: Object.keys(currentChatInfo),
+                chat_chatKeys: currentChatInfo._chat ? Object.keys(currentChatInfo._chat) : null
+            });
+        }
+        
+        const showSenderName = isGroup && !message.fromMe;
+        
+        // Tenta obter o nome do remetente de várias fontes
+        let senderName = '';
+        if (showSenderName) {
+            // Tenta várias fontes de nome
+            senderName = message.contact?.pushName || 
+                        message.contact?.name || 
+                        message.author?.pushName || 
+                        message.author?.name || 
+                        message.notifyName ||
+                        message.fromName ||
+                        (message.from ? message.from.split('@')[0] : '') || 
+                        null;
+            
+            // Log de erro se não conseguir encontrar o nome
+            if (!senderName) {
+                chatDebugError('❌ ERRO: Não foi possível encontrar o nome ou número do contato. Estrutura da mensagem:', {
+                    hasContact: !!message.contact,
+                    contact: message.contact,
+                    hasAuthor: !!message.author,
+                    author: message.author,
+                    notifyName: message.notifyName,
+                    fromName: message.fromName,
+                    from: message.from,
+                    messageKeys: Object.keys(message)
+                });
+                senderName = message.from ? message.from.split('@')[0] : 'Desconhecido';
+            } else {
+                chatDebugLog('Nome do remetente encontrado:', { 
+                    senderName, 
+                    source: message.contact?.pushName ? 'contact.pushName' :
+                            message.contact?.name ? 'contact.name' :
+                            message.author?.pushName ? 'author.pushName' :
+                            message.author?.name ? 'author.name' :
+                            message.notifyName ? 'notifyName' :
+                            message.fromName ? 'fromName' :
+                            'from (número)',
+                    from: message.from 
+                });
+            }
+        }
+        
         return `
             <div class="message ${message.fromMe ? 'sent' : 'received'}">
                 <div class="message-content">
+                    ${showSenderName ? `<div class="message-sender">${senderName}</div>` : ''}
                     ${mediaHtml}
                     ${messageText ? `<div class="message-text">${messageText}</div>` : ''}
                     <div class="message-time">${time}</div>
@@ -174,10 +302,13 @@ const Chat = {
                 : '';
             const ackIcon = Chat.getAckIcon(lastMsg?.ack, lastMsg?.fromMe);
 
+            const isGroup = chat.isGroup || false;
+            const avatarIcon = isGroup ? '👥' : '👤';
+            
             return `
                 <div class="chat-item" data-chat-id="${chatId}" onclick="window.selectChat('${chatId}'); event.stopPropagation(); return false;">
                     <div class="chat-avatar">
-                        <div class="avatar-placeholder">👤</div>
+                        <div class="avatar-placeholder">${avatarIcon}</div>
                     </div>
                     <div class="chat-info">
                         <div class="chat-header">

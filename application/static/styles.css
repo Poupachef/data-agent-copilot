@@ -532,6 +532,14 @@ body {
     color: #1c1e21;
 }
 
+.message-sender {
+    font-size: 12px;
+    font-weight: 600;
+    color: #25d366;
+    margin-bottom: 4px;
+    text-transform: capitalize;
+}
+
 .message-text {
     font-size: 14px;
     line-height: 1.4;
