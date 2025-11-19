@@ -3,7 +3,15 @@
  * Controla exibição de telas, notificações e atualizações de UI.
  */
 
-console.log('📱 ui.js carregando...');
+// Debug condicional
+const UI_DEBUG = (() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('debug') === 'true' || localStorage.getItem('debug') === 'true';
+})();
+
+function uiDebugLog(...args) {
+    if (UI_DEBUG) console.log('[UI]', ...args);
+}
 
 /**
  * Namespace de UI.
@@ -176,4 +184,4 @@ const UI = {
 
 // Expõe globalmente
 window.UI = UI;
-console.log('✅ UI exposto globalmente:', typeof window.UI);
+uiDebugLog('✅ UI exposto globalmente:', typeof window.UI);

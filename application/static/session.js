@@ -3,6 +3,20 @@
  * Controla criação, status e configuração de sessões.
  */
 
+// Debug condicional
+const SESSION_DEBUG = (() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('debug') === 'true' || localStorage.getItem('debug') === 'true';
+})();
+
+function sessionDebugLog(...args) {
+    if (SESSION_DEBUG) console.log('[SESSION]', ...args);
+}
+
+function sessionDebugError(...args) {
+    console.error('[SESSION]', ...args);
+}
+
 const DEFAULT_SESSION = 'default';
 
 /**
@@ -39,7 +53,7 @@ const Session = {
             }
             return { status: 'STOPPED', name: null };
         } catch (error) {
-            console.error('❌ Erro ao verificar status da sessão:', error);
+            sessionDebugError('❌ Erro ao verificar status da sessão:', error);
             return { status: 'ERROR', name: null };
         }
     },
@@ -56,7 +70,7 @@ const Session = {
                 }]
             });
         } catch (e) {
-            console.log('⚠️ Erro ao configurar webhooks:', e.message);
+            sessionDebugLog('⚠️ Erro ao configurar webhooks:', e.message);
         }
     },
 

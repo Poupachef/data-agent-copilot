@@ -31,8 +31,17 @@ def setup_routes(app: FastAPI) -> None:
     @app.get("/", response_class=HTMLResponse)
     async def home() -> HTMLResponse:
         """Serve a página inicial do frontend."""
-        with open(FRONTEND_PATH / "index.html", encoding="utf-8") as f:
-            return HTMLResponse(content=f.read())
+        index_file = FRONTEND_PATH / "index.html"
+        if not index_file.exists():
+            logger.error(f"Arquivo index.html não encontrado em {FRONTEND_PATH}")
+            return HTMLResponse(content="<h1>Frontend não encontrado</h1>", status_code=500)
+        
+        try:
+            with open(index_file, encoding="utf-8") as f:
+                return HTMLResponse(content=f.read())
+        except Exception as e:
+            logger.error(f"Erro ao ler index.html: {e}")
+            return HTMLResponse(content="<h1>Erro ao carregar frontend</h1>", status_code=500)
     
     @app.get("/ping")
     async def ping() -> JSONResponse:
@@ -66,8 +75,20 @@ def setup_routes(app: FastAPI) -> None:
             websocket: Conexão WebSocket
             phone: Identificador do telefone/sessão
         """
-        await manager.connect(websocket, phone)
-        await manager.keep_alive(websocket, phone)
+        if not phone or not phone.strip():
+            logger.warning("Tentativa de conexão WebSocket com phone vazio")
+            await websocket.close(code=1008, reason="Invalid phone identifier")
+            return
+        
+        try:
+            await manager.connect(websocket, phone)
+            await manager.keep_alive(websocket, phone)
+        except Exception as e:
+            logger.error(f"Erro no WebSocket endpoint para {phone}: {e}")
+            try:
+                await websocket.close(code=1011, reason="Internal server error")
+            except Exception:
+                pass
     
     @app.post("/webhook")
     async def webhook(request: Request) -> JSONResponse:

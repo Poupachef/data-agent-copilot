@@ -10,12 +10,19 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from config import BACKEND_HOST, BACKEND_PORT, LOG_FORMAT, LOG_LEVEL, RELOAD
+from config import BACKEND_HOST, BACKEND_PORT, LOG_FORMAT, LOG_LEVEL, RELOAD, WAHA_URL
 from routes import setup_routes
 
 # Configura logging
 logging.basicConfig(level=getattr(logging, LOG_LEVEL), format=LOG_FORMAT)
 logger = logging.getLogger(__name__)
+
+# Log de inicialização
+logger.info("=" * 50)
+logger.info("WhatsApp Web Backend - Iniciando")
+logger.info(f"Host: {BACKEND_HOST}, Port: {BACKEND_PORT}")
+logger.info(f"Waha URL: {WAHA_URL}")
+logger.info("=" * 50)
 
 # Cria aplicação FastAPI
 app = FastAPI(title="WhatsApp Web API")

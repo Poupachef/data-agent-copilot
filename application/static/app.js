@@ -1,10 +1,31 @@
 /**
  * Aplicação principal WhatsApp Web.
  * Integra todos os módulos e gerencia o fluxo da aplicação.
- * Versão: 3.0 - Todas as referências diretas a Chat removidas
  */
 
-console.log('📱 app.js carregado (versão 3.0)');
+// Configuração de debug - pode ser ativada via localStorage ou URL param
+const DEBUG = (() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlDebug = urlParams.get('debug') === 'true';
+    const storageDebug = localStorage.getItem('debug') === 'true';
+    return urlDebug || storageDebug;
+})();
+
+// Função de log condicional
+function debugLog(...args) {
+    if (DEBUG) {
+        console.log('[APP]', ...args);
+    }
+}
+
+function debugError(...args) {
+    // Erros sempre são logados
+    console.error('[APP]', ...args);
+}
+
+if (DEBUG) {
+    debugLog('📱 app.js carregado (modo debug ativado)');
+}
 
 // Configuração
 let phone = localStorage.getItem('phone') || '';
@@ -44,13 +65,13 @@ let messageInput;
 // Handlers de eventos WebSocket
 const wsHandlers = {
     onOpen: () => {
-        console.log('✅ WebSocket conectado!');
+        debugLog('✅ WebSocket conectado!');
     },
     onClose: () => {
-        console.log('🔌 WebSocket desconectado');
+        debugLog('🔌 WebSocket desconectado');
     },
     onError: (error) => {
-        console.error('❌ WebSocket error:', error);
+        debugError('❌ WebSocket error:', error);
     },
     onAuthFailure: () => {
         const ui = getUIModule();
@@ -78,10 +99,10 @@ const wsHandlers = {
         handleNewMessage(payload);
     },
     onMessageAck: (ackData) => {
-        console.log('Confirmação de mensagem:', ackData);
+        debugLog('Confirmação de mensagem:', ackData);
     },
     onChatUpdate: (chatData) => {
-        console.log('Chat atualizado:', chatData);
+        debugLog('Chat atualizado:', chatData);
         loadChats();
     }
 };
@@ -95,7 +116,7 @@ async function createSession() {
         if (ui) ui.notify('✅ Sessão criada!', 'success');
         await checkSessionStatus();
     } catch (error) {
-        console.error('❌ Erro ao criar sessão:', error);
+        debugError('❌ Erro ao criar sessão:', error);
         if (ui) ui.notify(`❌ Erro ao criar sessão: ${error.message}`, 'error');
     }
 }
@@ -108,7 +129,7 @@ async function deleteSession() {
         if (ui) ui.notify('✅ Sessão deletada!', 'success');
         await checkSessionStatus();
     } catch (error) {
-        console.error('❌ Erro ao deletar sessão:', error);
+        debugError('❌ Erro ao deletar sessão:', error);
         if (ui) ui.notify(`❌ Erro ao deletar sessão: ${error.message}`, 'error');
     }
 }
@@ -119,7 +140,7 @@ async function checkSessionStatus() {
         const sessionData = await Session.checkSessionStatus();
         if (ui) ui.updateSessionStatus(sessionData);
     } catch (error) {
-        console.error('❌ Erro ao verificar status da sessão:', error);
+        debugError('❌ Erro ao verificar status da sessão:', error);
         if (ui) ui.updateSessionStatus({ status: 'ERROR', name: null });
     }
 }
@@ -211,19 +232,19 @@ async function checkStatus() {
         }
         
         if (data.status === 'WORKING' || data.status === 'AUTHENTICATED') {
-            console.log('✅ Status conectado');
+            debugLog('✅ Status conectado');
         } else if (data.status === 'SCAN_QR_CODE') {
-            console.log('📱 Status aguardando QR code...');
+            debugLog('📱 Status aguardando QR code...');
             try {
                 const qrData = await API.getQRCode(session);
                 const qrUrl = URL.createObjectURL(qrData);
                 if (ui) ui.showQR(qrUrl);
             } catch (e) {
-                console.error('Erro ao obter QR code:', e);
+                debugError('Erro ao obter QR code:', e);
             }
         }
     } catch (error) {
-        console.error('❌ Erro ao verificar status:', error);
+        debugError('❌ Erro ao verificar status:', error);
         const ui = getUIModule();
         if (ui) ui.updateStatus('Erro ao verificar status');
     }
@@ -232,11 +253,11 @@ async function checkStatus() {
 
 // Chats e mensagens
 async function loadChats() {
-    console.log('🔄 loadChats chamado...');
+    debugLog('🔄 loadChats chamado...');
     try {
         const chatListEl = document.getElementById('chat-list');
         if (!chatListEl) {
-            console.log('⚠️ chat-list não encontrado, aguardando...');
+            debugLog('⚠️ chat-list não encontrado, aguardando...');
             setTimeout(loadChats, 100);
             return;
         }
@@ -244,24 +265,24 @@ async function loadChats() {
         // Carrega chats via Chat module
         const chatModule = getChatModule();
         if (!chatModule || !chatModule.loadChats) {
-            console.log('⚠️ Chat.loadChats não disponível, aguardando...');
+            debugLog('⚠️ Chat.loadChats não disponível, aguardando...');
             setTimeout(loadChats, 100);
             return;
         }
         
-        console.log('✅ Carregando chats via Chat.loadChats...');
+        debugLog('✅ Carregando chats via Chat.loadChats...');
         const chats = await chatModule.loadChats();
-        console.log('✅ Chats recebidos:', chats ? chats.length : 0);
+        debugLog('✅ Chats recebidos:', chats ? chats.length : 0);
         
         if (chatModule.renderChats) {
             chatListEl.innerHTML = chatModule.renderChats(chats, 'selectChat');
-            console.log('✅ Chats renderizados com sucesso!');
+            debugLog('✅ Chats renderizados com sucesso!');
     } else {
-            console.warn('⚠️ Chat.renderChats não disponível');
+            if (DEBUG) console.warn('[APP] ⚠️ Chat.renderChats não disponível');
         }
     } catch (error) {
-        console.error('❌ Erro ao carregar chats:', error);
-        console.error('Stack:', error.stack);
+        debugError('❌ Erro ao carregar chats:', error);
+        if (DEBUG) console.error('[APP] Stack:', error.stack);
         const uiModule = getUIModule();
         if (uiModule && uiModule.notify) {
             uiModule.notify('Erro ao carregar chats', 'error');
@@ -273,18 +294,17 @@ async function loadChats() {
 window.loadChats = loadChats;
 
 // Log para confirmar que a função foi definida
-console.log('✅ window.loadChats definida:', typeof window.loadChats);
+debugLog('✅ window.loadChats definida:', typeof window.loadChats);
 
 async function selectChat(chatId) {
-    console.log('selectChat chamado com:', chatId);
-    console.log('Versão selectChat: 3.0');
+    debugLog('selectChat chamado com:', chatId);
     
     // Define chatModule no escopo da função - NUNCA use Chat diretamente!
     let chatModule = null;
     try {
         chatModule = getChatModule();
     } catch (err) {
-        console.error('Erro ao obter chatModule:', err);
+        debugError('Erro ao obter chatModule:', err);
     }
     
     try {
@@ -293,7 +313,7 @@ async function selectChat(chatId) {
             chatModule.setCurrentChat(chatId);
         }
     } catch (err) {
-        console.warn('⚠️ Erro ao definir chat atual:', err);
+        if (DEBUG) console.warn('[APP] ⚠️ Erro ao definir chat atual:', err);
     }
     
     // Atualiza UI - marca o item clicado como ativo
@@ -326,11 +346,11 @@ async function selectChat(chatId) {
     try {
         if (chatModule && chatModule.selectChat) {
             // Usa Chat.selectChat se disponível
-            console.log('✅ Usando Chat.selectChat...');
+            debugLog('✅ Usando Chat.selectChat...');
             await chatModule.selectChat(chatId, renderMessages);
         } else {
             // Fallback para API
-            console.log('⚠️ Usando fallback API...');
+            debugLog('⚠️ Usando fallback API...');
             const apiModule = (typeof API !== 'undefined' ? API : null) || (typeof window.API !== 'undefined' ? window.API : null);
             if (apiModule && apiModule.getMessages) {
                 const messages = await apiModule.getMessages(session, chatId);
@@ -340,8 +360,8 @@ async function selectChat(chatId) {
             }
         }
     } catch (error) {
-        console.error('❌ Erro ao carregar mensagens:', error);
-        console.error('Stack:', error.stack);
+        debugError('❌ Erro ao carregar mensagens:', error);
+        if (DEBUG) console.error('[APP] Stack:', error.stack);
         const uiModule = getUIModule();
         if (uiModule && uiModule.notify) {
             uiModule.notify('Erro ao carregar mensagens', 'error');
@@ -353,10 +373,10 @@ async function selectChat(chatId) {
 window.selectChat = selectChat;
 
 function renderMessages(messages) {
-    console.log('renderMessages chamado com:', messages);
+    debugLog('renderMessages chamado com:', messages);
     const chatMessagesEl = document.getElementById('chat-messages');
     if (!chatMessagesEl) {
-        console.error('chat-messages não encontrado!');
+        debugError('chat-messages não encontrado!');
         return;
     }
     
@@ -371,9 +391,9 @@ function renderMessages(messages) {
         if (chatModule && chatModule.createMessageHtml) {
             try {
                 chatMessagesEl.innerHTML = messages.map(msg => chatModule.createMessageHtml(msg)).join('');
-                console.log('✅ Mensagens renderizadas com Chat.createMessageHtml');
+                debugLog('✅ Mensagens renderizadas com Chat.createMessageHtml');
             } catch (renderErr) {
-                console.error('❌ Erro ao renderizar com Chat.createMessageHtml:', renderErr);
+                debugError('❌ Erro ao renderizar com Chat.createMessageHtml:', renderErr);
                 // Fallback para renderização simples
                 throw renderErr;
             }
@@ -382,22 +402,22 @@ function renderMessages(messages) {
             chatMessagesEl.innerHTML = messages.map(msg => {
                 const messageText = msg.body || msg.text || '';
                 const time = msg.timestamp ? new Date(msg.timestamp * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
-                return `
+        return `
                     <div class="message ${msg.fromMe ? 'sent' : 'received'}">
                         <div class="message-content">
                             ${messageText ? `<div class="message-text">${messageText}</div>` : ''}
                             <div class="message-time">${time}</div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-            console.log('✅ Mensagens renderizadas com fallback simples');
+                </div>
+            </div>
+        `;
+    }).join('');
+            debugLog('✅ Mensagens renderizadas com fallback simples');
         }
         
         chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
     } catch (error) {
-        console.error('❌ Erro ao renderizar mensagens:', error);
-        console.error('Stack:', error.stack);
+        debugError('❌ Erro ao renderizar mensagens:', error);
+        if (DEBUG) console.error('[APP] Stack:', error.stack);
         chatMessagesEl.innerHTML = '<div style="text-align: center; padding: 20px; color: #e74c3c;">Erro ao carregar mensagens</div>';
     }
 }
@@ -421,11 +441,11 @@ async function sendMessage() {
         if (chatModule && chatModule.sendMessage) {
             // Usa Chat.sendMessage
             await chatModule.sendMessage(message);
-        } else {
+    } else {
             throw new Error('Nenhum método disponível para enviar mensagem');
         }
     } catch (error) {
-        console.error('Erro ao enviar mensagem:', error);
+        debugError('Erro ao enviar mensagem:', error);
         const uiModule = getUIModule();
         if (uiModule && uiModule.notify) {
             uiModule.notify('Erro ao enviar mensagem', 'error');

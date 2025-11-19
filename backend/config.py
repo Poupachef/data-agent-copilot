@@ -8,31 +8,34 @@ from pathlib import Path
 from typing import Optional
 
 # Carrega variáveis de ambiente do arquivo .env se disponível
+import logging
+logger = logging.getLogger(__name__)
+
+env_path = Path(__file__).parent / ".env"
 try:
     from dotenv import load_dotenv
-    from pathlib import Path
     # Carrega .env do diretório do backend
-    env_path = Path(__file__).parent / ".env"
     if env_path.exists():
         load_dotenv(env_path)
-        print(f"✅ Arquivo .env carregado: {env_path}")
+        logger.info(f"Arquivo .env carregado: {env_path}")
     else:
-        print(f"⚠️ Arquivo .env não encontrado em: {env_path}")
+        logger.warning(f"Arquivo .env não encontrado em: {env_path}")
 except ImportError:
     # Fallback: carrega .env manualmente se dotenv não estiver disponível
-    from pathlib import Path
-    env_path = Path(__file__).parent / ".env"
     if env_path.exists():
-        print(f"⚠️ python-dotenv não instalado. Carregando .env manualmente...")
-        with open(env_path, 'r') as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith('#') and '=' in line:
-                    key, value = line.split('=', 1)
-                    os.environ[key.strip()] = value.strip()
-        print(f"✅ Arquivo .env carregado manualmente: {env_path}")
+        logger.warning("python-dotenv não instalado. Carregando .env manualmente...")
+        try:
+            with open(env_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#') and '=' in line:
+                        key, value = line.split('=', 1)
+                        os.environ[key.strip()] = value.strip()
+            logger.info(f"Arquivo .env carregado manualmente: {env_path}")
+        except Exception as e:
+            logger.error(f"Erro ao carregar .env manualmente: {e}")
 except Exception as e:
-    print(f"⚠️ Erro ao carregar .env: {e}")
+    logger.error(f"Erro ao carregar .env: {e}")
 
 # URLs e autenticação
 WAHA_URL: str = os.getenv("WAHA_URL", "http://localhost:3001")

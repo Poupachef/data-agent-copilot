@@ -30,8 +30,15 @@ async def proxy_request(request: Request, path: str) -> Response:
     if request.method == "OPTIONS":
         return JSONResponse(content={})
     
+    # Valida path
+    if not path or not isinstance(path, str):
+        logger.warning(f"Path inválido recebido: {path}")
+        return JSONResponse({"error": "Invalid path"}, status_code=400)
+    
     url = f"{WAHA_URL}/api/{path}"
     params = dict(request.query_params)
+    
+    logger.debug(f"Proxying {request.method} {path} to {url}")
     
     # Prepara headers a encaminhar
     forward_headers = _prepare_headers(request)
@@ -53,6 +60,10 @@ async def proxy_request(request: Request, path: str) -> Response:
                 return _handle_qr_response(response)
             
             # Resposta padrão
+            # Loga erros HTTP para debug
+            if response.status_code >= 400:
+                logger.warning(f"Erro HTTP {response.status_code} do Waha para {path}")
+            
             return Response(
                 content=response.content,
                 status_code=response.status_code,
@@ -66,17 +77,25 @@ async def proxy_request(request: Request, path: str) -> Response:
             status_code=502
         )
     except httpx.TimeoutException as e:
-        logger.error(f"Timeout ao conectar com Waha: {repr(e)}")
+        logger.error(f"Timeout ao conectar com Waha (path: {path}): {repr(e)}")
         return JSONResponse(
             {"error": "Timeout ao conectar com o Waha. O serviço pode estar sobrecarregado."}, 
             status_code=502
         )
+    except httpx.HTTPStatusError as e:
+        logger.warning(f"Erro HTTP do Waha: {e.response.status_code} - {path}")
+        # Propaga a resposta do Waha
+        return Response(
+            content=e.response.content,
+            status_code=e.response.status_code,
+            media_type=e.response.headers.get("content-type", "application/json")
+        )
     except httpx.RequestError as e:
-        logger.error(f"Erro na requisição à API: {repr(e)}")
+        logger.error(f"Erro na requisição à API (path: {path}): {repr(e)}")
         return JSONResponse({"error": str(e)}, status_code=502)
     except Exception as e:
-        logger.error(f"Erro inesperado: {e}")
-        return JSONResponse({"error": str(e)}, status_code=500)
+        logger.exception(f"Erro inesperado ao processar requisição (path: {path}): {e}")
+        return JSONResponse({"error": "Internal server error"}, status_code=500)
 
 
 def _prepare_headers(request: Request) -> dict:

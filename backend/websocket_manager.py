@@ -57,19 +57,34 @@ class WebSocketManager:
         Args:
             data: Dados a serem enviados (serão serializados como JSON)
         """
-        message = json.dumps(data)
-        disconnected = []
+        if not data:
+            logger.warning("Tentativa de broadcast com dados vazios")
+            return
         
-        for phone, connections in self._connections.items():
-            for websocket in connections:
+        try:
+            message = json.dumps(data)
+        except (TypeError, ValueError) as e:
+            logger.error(f"Erro ao serializar dados para broadcast: {e}")
+            return
+        
+        disconnected = []
+        total_sent = 0
+        
+        for phone, connections in list(self._connections.items()):
+            for websocket in list(connections):
                 try:
                     await websocket.send_text(message)
-                except Exception:
+                    total_sent += 1
+                except Exception as e:
+                    logger.debug(f"Erro ao enviar para WebSocket {phone}: {e}")
                     disconnected.append((websocket, phone))
         
         # Remove conexões desconectadas
         for websocket, phone in disconnected:
             await self.disconnect(websocket, phone)
+        
+        if total_sent > 0:
+            logger.debug(f"Broadcast enviado para {total_sent} cliente(s)")
     
     async def keep_alive(self, websocket: WebSocket, phone: str) -> None:
         """

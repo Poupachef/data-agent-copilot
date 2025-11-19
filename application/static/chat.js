@@ -3,7 +3,19 @@
  * Controla exibição e manipulação de conversas.
  */
 
-console.log('📱 chat.js carregando...');
+// Debug condicional
+const CHAT_DEBUG = (() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('debug') === 'true' || localStorage.getItem('debug') === 'true';
+})();
+
+function chatDebugLog(...args) {
+    if (CHAT_DEBUG) console.log('[CHAT]', ...args);
+}
+
+function chatDebugError(...args) {
+    console.error('[CHAT]', ...args);
+}
 
 // Define constante local para evitar conflito com session.js
 // session.js carrega antes e já define DEFAULT_SESSION
@@ -25,7 +37,7 @@ const Chat = {
             }
             return [];
         } catch (error) {
-            console.error('Erro ao carregar chats:', error);
+            chatDebugError('Erro ao carregar chats:', error);
             return [];
         }
     },
@@ -43,7 +55,7 @@ const Chat = {
                 if (renderMessages) renderMessages(messages);
             }
         } catch (error) {
-            console.error('Erro ao carregar mensagens:', error);
+            chatDebugError('Erro ao carregar mensagens:', error);
         }
     },
 
@@ -59,7 +71,7 @@ const Chat = {
                 await apiModule.sendTextMessage(CHAT_DEFAULT_SESSION, currentChat, text.trim());
             }
         } catch (error) {
-            console.error('Erro ao enviar mensagem:', error);
+            chatDebugError('Erro ao enviar mensagem:', error);
             throw error;
         }
     },
@@ -178,4 +190,4 @@ const Chat = {
 
 // Expõe globalmente
 window.Chat = Chat;
-console.log('✅ Chat exposto globalmente:', typeof window.Chat);
+chatDebugLog('✅ Chat exposto globalmente:', typeof window.Chat);

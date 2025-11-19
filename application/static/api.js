@@ -3,22 +3,71 @@
  * Centraliza todas as chamadas HTTP ao backend.
  */
 
-const API_BASE = 'http://localhost:8001/api';
+// Configuração da API - pode ser sobrescrita via window.API_CONFIG
+const API_BASE = (window.API_CONFIG && window.API_CONFIG.baseURL) || 
+                 `${window.location.protocol}//${window.location.host}/api`;
+
+// Modo debug - pode ser ativado via window.API_CONFIG.debug
+const API_DEBUG = (window.API_CONFIG && window.API_CONFIG.debug) || false;
 
 /**
  * Faz uma requisição à API.
  */
 async function apiRequest(endpoint, options = {}) {
-    const response = await fetch(`${API_BASE}${endpoint}`, options);
-    const data = await response.json();
+    const url = `${API_BASE}${endpoint}`;
     
-    if (!response.ok) {
-        const error = new Error(data.message || `HTTP ${response.status}`);
-        error.status = response.status;
-        throw error;
+    if (API_DEBUG) {
+        console.log(`[API] ${options.method || 'GET'} ${url}`, options.body ? JSON.parse(options.body) : '');
     }
     
-    return data;
+    try {
+        const response = await fetch(url, options);
+        
+        // Tenta parsear JSON, mas trata erros de parse
+        let data;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            try {
+                data = await response.json();
+            } catch (parseError) {
+                if (API_DEBUG) {
+                    console.error('[API] Erro ao parsear JSON:', parseError);
+                }
+                throw new Error(`Invalid JSON response: ${response.status}`);
+            }
+        } else {
+            // Se não for JSON, retorna o texto
+            data = await response.text();
+        }
+        
+        if (!response.ok) {
+            const error = new Error(data.message || data.error || `HTTP ${response.status}`);
+            error.status = response.status;
+            error.data = data;
+            if (API_DEBUG) {
+                console.error(`[API] Erro ${response.status}:`, error);
+            }
+            throw error;
+        }
+        
+        if (API_DEBUG) {
+            console.log(`[API] Resposta ${response.status}:`, data);
+        }
+        
+        return data;
+    } catch (error) {
+        // Se for erro de rede, adiciona informação útil
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            const networkError = new Error('Erro de conexão com o servidor. Verifique se o backend está rodando.');
+            networkError.status = 0;
+            networkError.originalError = error;
+            if (API_DEBUG) {
+                console.error('[API] Erro de rede:', networkError);
+            }
+            throw networkError;
+        }
+        throw error;
+    }
 }
 
 /**
@@ -159,3 +208,8 @@ const API = {
         });
     }
 };
+
+// Expõe globalmente
+if (typeof window !== 'undefined') {
+    window.API = API;
+}

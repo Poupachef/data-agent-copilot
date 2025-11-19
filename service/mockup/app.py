@@ -14,8 +14,21 @@ from PIL import Image, ImageDraw, ImageFont
 
 app = FastAPI(title="Waha Mockup API", description="Mockup da API Waha para desenvolvimento")
 
-# Dados mockados
-MOCK_SESSION = {
+# Estado das sessões - mantém o status real das sessões
+session_state: Dict[str, Dict[str, Any]] = {
+    "default": {
+        "name": "default",
+        "status": "WORKING",
+        "engine": "WEBJS",
+        "me": {
+            "id": "5511999999999@c.us",
+            "pushName": "Usuário Mock"
+        }
+    }
+}
+
+# Dados mockados - template base
+MOCK_SESSION_TEMPLATE = {
     "name": "default",
     "status": "WORKING",
     "engine": "WEBJS",
@@ -244,32 +257,52 @@ async def health():
     return JSONResponse({"status": "healthy"})
 
 
+def get_session_status(session: str) -> Dict[str, Any]:
+    """Obtém o status atual de uma sessão."""
+    if session in session_state:
+        return session_state[session]
+    return None
+
+
 # Session endpoints
 @app.get("/api/sessions")
 async def list_sessions():
     """Lista todas as sessões."""
-    return JSONResponse([MOCK_SESSION])
+    return JSONResponse(list(session_state.values()))
 
 
 @app.get("/api/sessions/{session}")
 async def get_session(session: str):
     """Obtém informações de uma sessão."""
-    if session == "default":
-        return JSONResponse(MOCK_SESSION)
+    session_data = get_session_status(session)
+    if session_data:
+        return JSONResponse(session_data)
     raise HTTPException(status_code=404, detail="Session not found")
 
 
 @app.post("/api/sessions")
 async def create_session(data: Dict[str, Any] = None):
     """Cria uma nova sessão."""
-    # Simula criação de sessão - retorna a sessão mockada
-    return JSONResponse(MOCK_SESSION)
+    session_name = data.get("name", "default") if data else "default"
+    
+    # Se a sessão já existe, retorna ela
+    if session_name in session_state:
+        return JSONResponse(session_state[session_name])
+    
+    # Cria nova sessão
+    new_session = MOCK_SESSION_TEMPLATE.copy()
+    new_session["name"] = session_name
+    new_session["status"] = "STOPPED"
+    session_state[session_name] = new_session
+    
+    return JSONResponse(new_session)
 
 
 @app.delete("/api/sessions/{session}")
 async def delete_session(session: str):
     """Deleta uma sessão."""
-    if session == "default":
+    if session in session_state:
+        del session_state[session]
         return JSONResponse({"status": "deleted"})
     raise HTTPException(status_code=404, detail="Session not found")
 
@@ -277,38 +310,45 @@ async def delete_session(session: str):
 @app.post("/api/sessions/{session}/start")
 async def start_session(session: str):
     """Inicia uma sessão."""
-    if session == "default":
-        updated_session = MOCK_SESSION.copy()
-        updated_session["status"] = "WORKING"
-        return JSONResponse(updated_session)
-    raise HTTPException(status_code=404, detail="Session not found")
+    if session not in session_state:
+        # Cria sessão se não existir
+        session_state[session] = MOCK_SESSION_TEMPLATE.copy()
+        session_state[session]["name"] = session
+    
+    session_state[session]["status"] = "WORKING"
+    return JSONResponse(session_state[session])
 
 
 @app.post("/api/sessions/{session}/stop")
 async def stop_session(session: str):
     """Para uma sessão."""
-    if session == "default":
-        updated_session = MOCK_SESSION.copy()
-        updated_session["status"] = "STOPPED"
-        return JSONResponse(updated_session)
+    session_data = get_session_status(session)
+    if session_data:
+        session_data["status"] = "STOPPED"
+        return JSONResponse(session_data)
     raise HTTPException(status_code=404, detail="Session not found")
 
 
 @app.post("/api/sessions/{session}/logout")
 async def logout_session(session: str):
     """Faz logout de uma sessão."""
-    if session == "default":
-        updated_session = MOCK_SESSION.copy()
-        updated_session["status"] = "STOPPED"
-        return JSONResponse(updated_session)
+    session_data = get_session_status(session)
+    if session_data:
+        session_data["status"] = "STOPPED"
+        return JSONResponse(session_data)
     raise HTTPException(status_code=404, detail="Session not found")
 
 
 @app.put("/api/sessions/{session}")
 async def update_session(session: str, data: Dict[str, Any] = None):
     """Atualiza configuração de uma sessão."""
-    if session == "default":
-        return JSONResponse(MOCK_SESSION)
+    session_data = get_session_status(session)
+    if session_data:
+        if data:
+            # Atualiza campos se fornecidos
+            if "config" in data:
+                session_data.setdefault("config", {}).update(data["config"])
+        return JSONResponse(session_data)
     raise HTTPException(status_code=404, detail="Session not found")
 
 
@@ -316,28 +356,43 @@ async def update_session(session: str, data: Dict[str, Any] = None):
 @app.get("/api/{session}/auth/qr")
 async def get_qr_code(session: str):
     """Obtém QR code de autenticação."""
-    if session == "default":
-        qr_image = generate_qr_code()
-        return Response(content=qr_image, media_type="image/png")
-    raise HTTPException(status_code=404, detail="Session not found")
+    session_data = get_session_status(session)
+    if not session_data:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    # Atualiza status para SCAN_QR_CODE se necessário
+    if session_data.get("status") == "STOPPED":
+        session_data["status"] = "SCAN_QR_CODE"
+    
+    qr_image = generate_qr_code()
+    return Response(content=qr_image, media_type="image/png")
 
 
 # User info endpoints
 @app.get("/api/{session}/me")
 async def get_me(session: str):
     """Obtém informações do usuário autenticado."""
-    if session == "default":
-        return JSONResponse(MOCK_SESSION.get("me", {}))
-    raise HTTPException(status_code=404, detail="Session not found")
+    session_data = get_session_status(session)
+    if not session_data:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    return JSONResponse(session_data.get("me", {}))
 
 
 # Chat endpoints
 @app.get("/api/{session}/chats/overview")
 async def get_chats_overview(session: str):
     """Obtém overview dos chats."""
-    if session == "default":
-        return JSONResponse(MOCK_CHATS)
-    raise HTTPException(status_code=404, detail="Session not found")
+    session_data = get_session_status(session)
+    if not session_data:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    # Verifica se a sessão está ativa
+    if session_data.get("status") not in ["WORKING", "AUTHENTICATED"]:
+        # Retorna lista vazia se sessão não está ativa
+        return JSONResponse([])
+    
+    return JSONResponse(MOCK_CHATS)
 
 
 @app.get("/api/{session}/chats/{chat_id}/messages")
@@ -347,13 +402,15 @@ async def get_chat_messages(
     limit: int = Query(40, ge=1, le=100)
 ):
     """Obtém mensagens de um chat."""
-    if session == "default":
-        # Decodifica o chat_id se necessário
-        decoded_chat_id = chat_id.replace("%40", "@")
-        messages = MOCK_MESSAGES.get(decoded_chat_id, [])
-        # Retorna as últimas 'limit' mensagens
-        return JSONResponse(messages[-limit:])
-    raise HTTPException(status_code=404, detail="Session not found")
+    session_data = get_session_status(session)
+    if not session_data:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    # Decodifica o chat_id se necessário
+    decoded_chat_id = chat_id.replace("%40", "@")
+    messages = MOCK_MESSAGES.get(decoded_chat_id, [])
+    # Retorna as últimas 'limit' mensagens
+    return JSONResponse(messages[-limit:])
 
 
 # Message sending endpoints
