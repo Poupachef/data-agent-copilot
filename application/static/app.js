@@ -34,15 +34,36 @@ let session = 'default';
 // Armazena as últimas 4 mensagens da conversa atual
 let lastMessages = [];
 
-// Gerenciamento de favoritos
+// Gerenciamento de favoritos - agora usando API do backend
 const Favorites = {
+    // Cache local para evitar múltiplas requisições
+    _cache: null,
+    _session: null,
+    
     /**
-     * Obtém lista de favoritos do localStorage.
+     * Obtém lista de favoritos da API.
      */
-    getFavorites() {
+    async getFavorites(session = 'default') {
         try {
-            const favorites = localStorage.getItem('chatFavorites');
-            return favorites ? JSON.parse(favorites) : [];
+            const apiModule = (typeof API !== 'undefined' ? API : null) || (typeof window.API !== 'undefined' ? window.API : null);
+            if (!apiModule || !apiModule.getFavorites) {
+                console.error('API module ou getFavorites não disponível');
+                return [];
+            }
+            
+            // Usa cache se disponível e para a mesma sessão
+            if (this._cache && this._session === session) {
+                return this._cache;
+            }
+            
+            const response = await apiModule.getFavorites(session);
+            const favorites = response?.favorites || [];
+            
+            // Atualiza cache
+            this._cache = favorites;
+            this._session = session;
+            
+            return favorites;
         } catch (e) {
             console.error('Erro ao obter favoritos:', e);
             return [];
@@ -50,52 +71,99 @@ const Favorites = {
     },
     
     /**
-     * Adiciona um chat aos favoritos.
+     * Adiciona um chat aos favoritos via API.
      */
-    addFavorite(chatId) {
-        const favorites = this.getFavorites();
-        if (!favorites.includes(chatId)) {
-            favorites.push(chatId);
-            localStorage.setItem('chatFavorites', JSON.stringify(favorites));
+    async addFavorite(session = 'default', chatId) {
+        try {
+            const apiModule = (typeof API !== 'undefined' ? API : null) || (typeof window.API !== 'undefined' ? window.API : null);
+            if (!apiModule || !apiModule.addFavorite) {
+                console.error('API module ou addFavorite não disponível');
+                return false;
+            }
+            
+            await apiModule.addFavorite(session, chatId);
+            
+            // Invalida cache para forçar reload na próxima chamada
+            if (this._session === session) {
+                this._cache = null;
+            }
+            
             debugLog('✅ Favorito adicionado:', chatId);
             return true;
+        } catch (e) {
+            console.error('Erro ao adicionar favorito:', e);
+            return false;
         }
-        return false;
     },
     
     /**
-     * Remove um chat dos favoritos.
+     * Remove um chat dos favoritos via API.
      */
-    removeFavorite(chatId) {
-        const favorites = this.getFavorites();
-        const index = favorites.indexOf(chatId);
-        if (index > -1) {
-            favorites.splice(index, 1);
-            localStorage.setItem('chatFavorites', JSON.stringify(favorites));
+    async removeFavorite(session = 'default', chatId) {
+        try {
+            const apiModule = (typeof API !== 'undefined' ? API : null) || (typeof window.API !== 'undefined' ? window.API : null);
+            if (!apiModule || !apiModule.removeFavorite) {
+                console.error('API module ou removeFavorite não disponível');
+                return false;
+            }
+            
+            await apiModule.removeFavorite(session, chatId);
+            
+            // Invalida cache para forçar reload na próxima chamada
+            if (this._session === session) {
+                this._cache = null;
+            }
+            
             debugLog('✅ Favorito removido:', chatId);
             return true;
+        } catch (e) {
+            console.error('Erro ao remover favorito:', e);
+            return false;
         }
-        return false;
     },
     
     /**
-     * Verifica se um chat é favorito.
+     * Verifica se um chat é favorito via API.
      */
-    isFavorite(chatId) {
-        return this.getFavorites().includes(chatId);
+    async isFavorite(session = 'default', chatId) {
+        try {
+            const apiModule = (typeof API !== 'undefined' ? API : null) || (typeof window.API !== 'undefined' ? window.API : null);
+            if (!apiModule || !apiModule.checkFavorite) {
+                // Fallback: verifica no cache local
+                const favorites = await this.getFavorites(session);
+                return favorites.includes(chatId);
+            }
+            
+            const response = await apiModule.checkFavorite(session, chatId);
+            return response?.isFavorite || false;
+        } catch (e) {
+            console.error('Erro ao verificar favorito:', e);
+            // Fallback: verifica no cache local
+            const favorites = await this.getFavorites(session);
+            return favorites.includes(chatId);
+        }
     },
     
     /**
-     * Alterna o status de favorito de um chat.
+     * Alterna o status de favorito de um chat via API.
      */
-    toggleFavorite(chatId) {
-        if (this.isFavorite(chatId)) {
-            this.removeFavorite(chatId);
+    async toggleFavorite(session = 'default', chatId) {
+        const isCurrentlyFavorite = await this.isFavorite(session, chatId);
+        if (isCurrentlyFavorite) {
+            await this.removeFavorite(session, chatId);
             return false;
         } else {
-            this.addFavorite(chatId);
+            await this.addFavorite(session, chatId);
             return true;
         }
+    },
+    
+    /**
+     * Limpa o cache de favoritos.
+     */
+    clearCache() {
+        this._cache = null;
+        this._session = null;
     }
 };
 
@@ -1103,18 +1171,22 @@ window.showChat = showChat;
 let showingFavorites = false;
 
 // Função global para alternar favorito
-window.toggleFavorite = function(chatId) {
+window.toggleFavorite = async function(chatId) {
     if (typeof window.Favorites !== 'undefined') {
-        const isNowFavorite = window.Favorites.toggleFavorite(chatId);
-        debugLog(`Favorito ${isNowFavorite ? 'adicionado' : 'removido'}:`, chatId);
-        // Recarrega a lista de chats para atualizar a UI
-        // Se estiver mostrando favoritos, recarrega favoritos; senão, recarrega todas
-        if (showingFavorites) {
-            showFavorites();
-        } else {
-            if (typeof loadChats === 'function' || typeof window.loadChats === 'function') {
-                (loadChats || window.loadChats)();
+        try {
+            const isNowFavorite = await window.Favorites.toggleFavorite(session, chatId);
+            debugLog(`Favorito ${isNowFavorite ? 'adicionado' : 'removido'}:`, chatId);
+            // Recarrega a lista de chats para atualizar a UI
+            // Se estiver mostrando favoritos, recarrega favoritos; senão, recarrega todas
+            if (showingFavorites) {
+                await showFavorites();
+            } else {
+                if (typeof loadChats === 'function' || typeof window.loadChats === 'function') {
+                    (loadChats || window.loadChats)();
+                }
             }
+        } catch (error) {
+            debugError('Erro ao alternar favorito:', error);
         }
     }
 };
@@ -1144,7 +1216,8 @@ async function showFavorites() {
             const chatModule = getChatModule();
             const chatListEl = document.getElementById('chat-list');
             if (chatListEl && chatModule && chatModule.renderChats) {
-                chatListEl.innerHTML = chatModule.renderChats(favoriteChats, 'selectChat');
+                const html = await chatModule.renderChats(favoriteChats, 'selectChat', session);
+                chatListEl.innerHTML = html;
                 debugLog('✅ Favoritos renderizados:', favoriteChats.length);
                 
                 // Adiciona event listeners para os chat-items e estrelas de favorito

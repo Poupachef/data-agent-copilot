@@ -346,8 +346,18 @@ const Chat = {
     /**
      * Renderiza lista de chats.
      */
-    renderChats(chats, onChatSelect) {
+    async renderChats(chats, onChatSelect, session = 'default') {
         const currentChatId = Chat.getCurrentChat();
+        
+        // Carrega favoritos uma vez para todas as conversas
+        let favorites = [];
+        if (typeof window.Favorites !== 'undefined') {
+            try {
+                favorites = await window.Favorites.getFavorites(session);
+            } catch (e) {
+                chatDebugError('Erro ao carregar favoritos para renderização:', e);
+            }
+        }
         
         return chats.map(chat => {
             const chatId = chat.id._serialized || chat.id;
@@ -438,8 +448,8 @@ const Chat = {
             }
             }
             
-            // Verifica se é favorito
-            const isFavorite = typeof window.Favorites !== 'undefined' && window.Favorites.isFavorite(chatId);
+            // Verifica se é favorito (usando lista carregada anteriormente)
+            const isFavorite = favorites.includes(chatId);
             
             // Monta as classes: active sempre por último para ter prioridade
             const classes = ['chat-item', statusClass, isActive ? 'active' : '', isFavorite ? 'favorite' : ''].filter(c => c).join(' ');

@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 
 from api_proxy import proxy_request
 from config import FRONTEND_PATH
+from favorites import add_favorite, get_favorites, is_favorite, remove_favorite
 from webhook_handler import handle_webhook
 from websocket_manager import manager
 
@@ -47,6 +48,92 @@ def setup_routes(app: FastAPI) -> None:
     async def ping() -> JSONResponse:
         """Endpoint de health check."""
         return JSONResponse({"status": "ok", "message": "Backend is running"})
+    
+    # Endpoints de favoritos (DEVEM VIR ANTES do proxy genérico)
+    @app.get("/api/favorites/{session}")
+    async def get_user_favorites(session: str) -> JSONResponse:
+        """
+        Obtém lista de favoritos de uma sessão.
+        
+        Args:
+            session: Nome da sessão
+            
+        Returns:
+            Lista de IDs de chats favoritos
+        """
+        try:
+            favorites = get_favorites(session)
+            return JSONResponse({"favorites": favorites})
+        except Exception as e:
+            logger.error(f"Erro ao obter favoritos para sessão {session}: {e}")
+            return JSONResponse({"error": str(e)}, status_code=500)
+    
+    @app.post("/api/favorites/{session}/{chat_id:path}")
+    async def add_user_favorite(session: str, chat_id: str) -> JSONResponse:
+        """
+        Adiciona um chat aos favoritos de uma sessão.
+        
+        Args:
+            session: Nome da sessão
+            chat_id: ID do chat (pode conter /, por isso :path)
+            
+        Returns:
+            Status da operação
+        """
+        try:
+            # Decodifica o chat_id se necessário
+            decoded_chat_id = chat_id.replace("%40", "@")
+            success = add_favorite(session, decoded_chat_id)
+            if success:
+                return JSONResponse({"success": True, "message": "Favorito adicionado"})
+            return JSONResponse({"success": False, "error": "Erro ao adicionar favorito"}, status_code=500)
+        except Exception as e:
+            logger.error(f"Erro ao adicionar favorito para sessão {session}, chat {chat_id}: {e}")
+            return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+    
+    @app.delete("/api/favorites/{session}/{chat_id:path}")
+    async def remove_user_favorite(session: str, chat_id: str) -> JSONResponse:
+        """
+        Remove um chat dos favoritos de uma sessão.
+        
+        Args:
+            session: Nome da sessão
+            chat_id: ID do chat (pode conter /, por isso :path)
+            
+        Returns:
+            Status da operação
+        """
+        try:
+            # Decodifica o chat_id se necessário
+            decoded_chat_id = chat_id.replace("%40", "@")
+            success = remove_favorite(session, decoded_chat_id)
+            if success:
+                return JSONResponse({"success": True, "message": "Favorito removido"})
+            return JSONResponse({"success": False, "error": "Erro ao remover favorito"}, status_code=500)
+        except Exception as e:
+            logger.error(f"Erro ao remover favorito para sessão {session}, chat {chat_id}: {e}")
+            return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+    
+    @app.get("/api/favorites/{session}/{chat_id:path}/check")
+    async def check_favorite(session: str, chat_id: str) -> JSONResponse:
+        """
+        Verifica se um chat é favorito de uma sessão.
+        
+        Args:
+            session: Nome da sessão
+            chat_id: ID do chat (pode conter /, por isso :path)
+            
+        Returns:
+            True se é favorito, False caso contrário
+        """
+        try:
+            # Decodifica o chat_id se necessário
+            decoded_chat_id = chat_id.replace("%40", "@")
+            is_fav = is_favorite(session, decoded_chat_id)
+            return JSONResponse({"isFavorite": is_fav})
+        except Exception as e:
+            logger.error(f"Erro ao verificar favorito para sessão {session}, chat {chat_id}: {e}")
+            return JSONResponse({"isFavorite": False, "error": str(e)}, status_code=500)
     
     @app.api_route("/api/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
     async def api_proxy(request: Request, path: str) -> JSONResponse:

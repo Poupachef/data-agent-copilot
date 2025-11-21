@@ -238,6 +238,40 @@ const API = {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
         });
+    },
+    
+    /**
+     * Obtém lista de favoritos de uma sessão.
+     */
+    async getFavorites(session = 'default') {
+        return await apiRequest(`/favorites/${session}`);
+    },
+    
+    /**
+     * Adiciona um chat aos favoritos de uma sessão.
+     */
+    async addFavorite(session = 'default', chatId) {
+        return await apiRequest(`/favorites/${session}/${encodeURIComponent(chatId)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+    },
+    
+    /**
+     * Remove um chat dos favoritos de uma sessão.
+     */
+    async removeFavorite(session = 'default', chatId) {
+        return await apiRequest(`/favorites/${session}/${encodeURIComponent(chatId)}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' }
+        });
+    },
+    
+    /**
+     * Verifica se um chat é favorito de uma sessão.
+     */
+    async checkFavorite(session = 'default', chatId) {
+        return await apiRequest(`/favorites/${session}/${encodeURIComponent(chatId)}/check`);
     }
 };
 
