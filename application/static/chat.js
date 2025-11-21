@@ -101,6 +101,23 @@ const Chat = {
             // Agora carrega as mensagens (já com as informações do chat disponíveis)
             if (apiModule && apiModule.getMessages) {
                 const messages = await apiModule.getMessages(CHAT_DEFAULT_SESSION, chatId);
+                
+                // Log de origem das mensagens da API
+                console.log('[CHAT] 📡 Mensagens recebidas da API:', {
+                    chatId: chatId,
+                    total: messages?.length || 0,
+                    source: 'Chat.selectChat -> API.getMessages',
+                    messages: messages?.map(msg => ({
+                        id: msg.id,
+                        hasBody: !!msg.body,
+                        hasText: !!msg.text,
+                        hasMedia: !!(msg.hasMedia && msg.media && msg.media.url),
+                        timestamp: msg.timestamp,
+                        type: msg.type,
+                        fullMessage: msg
+                    })) || []
+                });
+                
                 // Ordena mensagens por timestamp antes de renderizar
                 if (messages && Array.isArray(messages)) {
                     const sortedMessages = messages.sort((a, b) => {
@@ -207,10 +224,37 @@ const Chat = {
      * Cria HTML de uma mensagem.
      */
     createMessageHtml(message) {
-        const messageText = message.body || message.text || '';
+        let messageText = message.body || message.text || '';
         const time = message.timestamp ? Chat.formatMessageTime(message.timestamp) : '';
         const hasMedia = message.hasMedia && message.media && message.media.url;
         const mediaHtml = hasMedia ? Chat.renderMediaHtml(message.media) : '';
+        
+        // Se não há conteúdo (nem texto nem mídia), adiciona log detalhado para debug
+        if (!messageText && !hasMedia) {
+            console.error('🚨 MENSAGEM FANTASMA DETECTADA - Sem conteúdo:', {
+                messageId: message.id,
+                timestamp: message.timestamp,
+                time: time,
+                fromMe: message.fromMe,
+                from: message.from,
+                to: message.to,
+                hasBody: !!message.body,
+                body: message.body,
+                hasText: !!message.text,
+                text: message.text,
+                hasMedia: message.hasMedia,
+                media: message.media,
+                messageType: message.type,
+                messageSubtype: message.subtype,
+                allKeys: Object.keys(message),
+                fullMessage: JSON.stringify(message, null, 2),
+                stackTrace: new Error().stack
+            });
+            chatDebugError('🚨 MENSAGEM FANTASMA - Estrutura completa:', message);
+            
+            // Adiciona texto de debug na mensagem para visualização
+            messageText = `[MENSAGEM FANTASMA - ID: ${message.id || 'sem-id'}, Tipo: ${message.type || 'sem-tipo'}, Timestamp: ${time}]`;
+        }
         
         // Verifica se é grupo - pode estar em _chat.isGroup ou isGroup direto
         const isGroup = currentChatInfo ? (currentChatInfo._chat?.isGroup ?? currentChatInfo.isGroup) : false;

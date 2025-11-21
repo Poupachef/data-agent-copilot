@@ -190,7 +190,29 @@ const API = {
      * Obtém mensagens de um chat.
      */
     async getMessages(session = 'default', chatId, limit = 40) {
-        return await apiRequest(`/${session}/chats/${encodeURIComponent(chatId)}/messages?limit=${limit}`);
+        const url = `/${session}/chats/${encodeURIComponent(chatId)}/messages?limit=${limit}`;
+        console.log('[API] 📡 Buscando mensagens:', { session, chatId, limit, url });
+        const messages = await apiRequest(url);
+        
+        // Log de origem das mensagens da API
+        console.log('[API] 📥 Mensagens recebidas do backend:', {
+            session,
+            chatId,
+            total: messages?.length || 0,
+            source: 'API.getMessages -> apiRequest',
+            url: url,
+            messages: messages?.map(msg => ({
+                id: msg.id,
+                hasBody: !!msg.body,
+                hasText: !!msg.text,
+                hasMedia: !!(msg.hasMedia && msg.media && msg.media.url),
+                timestamp: msg.timestamp,
+                type: msg.type,
+                fullMessage: msg
+            })) || []
+        });
+        
+        return messages;
     },
 
     /**

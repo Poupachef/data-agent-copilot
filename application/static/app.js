@@ -638,6 +638,21 @@ function renderMessages(messages) {
         return;
     }
     
+    // Log de origem das mensagens
+    console.log('[APP] 📥 Mensagens recebidas para renderização:', {
+        total: messages.length,
+        source: 'renderMessages',
+        caller: new Error().stack.split('\n')[2]?.trim(),
+        messages: messages.map(msg => ({
+            id: msg.id,
+            hasBody: !!msg.body,
+            hasText: !!msg.text,
+            hasMedia: !!(msg.hasMedia && msg.media && msg.media.url),
+            timestamp: msg.timestamp,
+            type: msg.type
+        }))
+    });
+    
     try {
         // Ordena mensagens por timestamp (crescente: mais antigas primeiro, mais recentes por último)
         const sortedMessages = [...messages].sort((a, b) => {
