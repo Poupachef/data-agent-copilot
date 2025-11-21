@@ -69,12 +69,30 @@ let messageInput;
 const wsHandlers = {
     onOpen: () => {
         debugLog('✅ WebSocket conectado!');
+        // Atualiza status visual
+        const wsStatus = document.getElementById('ws-status');
+        if (wsStatus) {
+            wsStatus.textContent = '🟢 WebSocket';
+            wsStatus.style.color = '#25d366';
+        }
     },
     onClose: () => {
         debugLog('🔌 WebSocket desconectado');
+        // Atualiza status visual
+        const wsStatus = document.getElementById('ws-status');
+        if (wsStatus) {
+            wsStatus.textContent = '🔴 WebSocket';
+            wsStatus.style.color = '#e74c3c';
+        }
     },
     onError: (error) => {
         debugError('❌ WebSocket error:', error);
+        // Atualiza status visual
+        const wsStatus = document.getElementById('ws-status');
+        if (wsStatus) {
+            wsStatus.textContent = '⚠️ WebSocket Error';
+            wsStatus.style.color = '#f39c12';
+        }
     },
     onAuthFailure: () => {
         const ui = getUIModule();
@@ -183,9 +201,36 @@ async function startSession() {
     try {
         if (ui) ui.updateStatus('Iniciando sessão...');
         await Session.startSession(session);
+        
+        // Aguarda um pouco para a sessão iniciar
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Configura webhooks após iniciar a sessão
+        debugLog('🔧 Configurando webhooks...');
+        try {
+            await Session.configureWebhooks(session);
+            debugLog('✅ Webhooks configurados com sucesso');
+            
+            // Verifica se os webhooks foram configurados
+            try {
+                const sessionInfo = await API.getSessionStatus(session);
+                debugLog('📋 Configuração da sessão:', sessionInfo);
+                if (sessionInfo.config && sessionInfo.config.webhooks) {
+                    debugLog('✅ Webhooks encontrados na sessão:', sessionInfo.config.webhooks);
+                } else {
+                    debugError('⚠️ Webhooks não encontrados na configuração da sessão!');
+                }
+            } catch (checkError) {
+                debugError('⚠️ Erro ao verificar configuração da sessão:', checkError);
+            }
+        } catch (webhookError) {
+            debugError('⚠️ Erro ao configurar webhooks:', webhookError);
+        }
+        
         if (ui) ui.notify('Sessão iniciada', 'success');
         await checkStatus();
     } catch (error) {
+        debugError('❌ Erro ao iniciar sessão:', error);
         if (ui) ui.notify('Erro ao iniciar sessão: ' + error.message, 'error');
     }
 }
@@ -698,11 +743,27 @@ function createSimpleMessageHtml(message) {
 window.createSimpleMessageHtml = createSimpleMessageHtml;
 
 function handleNewMessage(messageData) {
+    debugLog('🎯 handleNewMessage chamado!', messageData);
+    
+    if (!messageData) {
+        debugError('❌ messageData é null ou undefined!');
+        return;
+    }
+    
     const chatId = messageData.from;
+    debugLog('📋 Chat ID da mensagem:', chatId);
+    
     const chatModule = getChatModule();
     const currentChatId = chatModule && chatModule.getCurrentChat ? chatModule.getCurrentChat() : null;
+    debugLog('📋 Chat atual:', currentChatId);
+    
+    if (!chatId) {
+        debugError('❌ messageData.from está vazio!', messageData);
+        return;
+    }
     
     if (currentChatId && chatId === currentChatId) {
+        debugLog('✅ Mensagem é do chat atual, adicionando ao DOM...');
         const messageObj = {
             body: messageData.body,
             fromMe: messageData.fromMe,
@@ -721,15 +782,23 @@ function handleNewMessage(messageData) {
         
         const chatMessagesEl = document.getElementById('chat-messages');
         if (chatMessagesEl) {
+            debugLog('📝 Adicionando mensagem ao DOM...');
             const messageHtml = (chatModule && chatModule.createMessageHtml) 
                 ? chatModule.createMessageHtml(messageObj)
                 : createSimpleMessageHtml(messageObj);
             chatMessagesEl.insertAdjacentHTML('beforeend', messageHtml);
             chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+            debugLog('✅ Mensagem adicionada ao DOM com sucesso!');
+        } else {
+            debugError('❌ Elemento chat-messages não encontrado!');
         }
+    } else {
+        debugLog('ℹ️ Mensagem não é do chat atual. Chat da mensagem:', chatId, 'Chat atual:', currentChatId);
     }
     
+    // Sempre atualiza a lista de chats para refletir a nova mensagem
     if (typeof loadChats === 'function' || typeof window.loadChats === 'function') {
+        debugLog('🔄 Atualizando lista de chats...');
         (loadChats || window.loadChats)();
     }
 }
@@ -747,8 +816,13 @@ function showChat() {
         if (chatInterface) chatInterface.style.display = 'flex';
     }
     // Conecta WebSocket
-    if (typeof WebSocket !== 'undefined' && WebSocket.connectWebSocket) {
-        WebSocket.connectWebSocket(phone, wsHandlers);
+    const wsManager = (typeof window !== 'undefined' && window.WebSocketManager) || 
+                      (typeof WebSocketManager !== 'undefined' ? WebSocketManager : null);
+    if (wsManager && wsManager.connectWebSocket) {
+        debugLog('🔌 Tentando conectar WebSocket com phone:', phone);
+        wsManager.connectWebSocket(phone, wsHandlers);
+    } else {
+        debugError('❌ WebSocketManager não disponível!', typeof window.WebSocketManager, typeof WebSocketManager);
     }
     if (typeof loadChats === 'function') {
     loadChats();
@@ -761,7 +835,11 @@ window.showChat = showChat;
 function showLogin() {
     const ui = getUIModule();
     if (ui) ui.showLogin();
-    WebSocket.disconnectWebSocket();
+    const wsManager = (typeof window !== 'undefined' && window.WebSocketManager) || 
+                      (typeof WebSocketManager !== 'undefined' ? WebSocketManager : null);
+    if (wsManager && wsManager.disconnectWebSocket) {
+        wsManager.disconnectWebSocket();
+    }
 }
 
 function showSessionSettings() {

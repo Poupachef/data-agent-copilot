@@ -61,6 +61,14 @@ class WebSocketManager:
             logger.warning("Tentativa de broadcast com dados vazios")
             return
         
+        # Log do número de conexões ativas
+        total_connections = sum(len(conns) for conns in self._connections.values())
+        logger.info(f"📡 Broadcast: {total_connections} conexão(ões) WebSocket ativa(s)")
+        
+        if total_connections == 0:
+            logger.warning("⚠️ Nenhuma conexão WebSocket ativa para fazer broadcast!")
+            return
+        
         try:
             message = json.dumps(data)
         except (TypeError, ValueError) as e:
@@ -71,12 +79,14 @@ class WebSocketManager:
         total_sent = 0
         
         for phone, connections in list(self._connections.items()):
+            logger.debug(f"Enviando para {len(connections)} conexão(ões) do phone: {phone}")
             for websocket in list(connections):
                 try:
                     await websocket.send_text(message)
                     total_sent += 1
+                    logger.debug(f"✅ Mensagem enviada para WebSocket {phone}")
                 except Exception as e:
-                    logger.debug(f"Erro ao enviar para WebSocket {phone}: {e}")
+                    logger.error(f"❌ Erro ao enviar para WebSocket {phone}: {e}")
                     disconnected.append((websocket, phone))
         
         # Remove conexões desconectadas
@@ -84,7 +94,9 @@ class WebSocketManager:
             await self.disconnect(websocket, phone)
         
         if total_sent > 0:
-            logger.debug(f"Broadcast enviado para {total_sent} cliente(s)")
+            logger.info(f"✅ Broadcast enviado para {total_sent} cliente(s)")
+        else:
+            logger.warning("⚠️ Nenhuma mensagem foi enviada no broadcast!")
     
     async def keep_alive(self, websocket: WebSocket, phone: str) -> None:
         """

@@ -24,6 +24,9 @@ function wsDebugError(...args) {
 let ws = null;
 let currentPhone = '';
 
+// Preserva a classe WebSocket nativa antes de qualquer sobrescrita
+const NativeWebSocket = typeof window !== 'undefined' ? window.WebSocket : null;
+
 /**
  * Namespace do WebSocket Manager.
  * Nota: Renomeado para evitar conflito com a classe WebSocket nativa do browser.
@@ -36,7 +39,13 @@ const WebSocketManager = {
         if (ws) return;
         
         currentPhone = phoneNumber;
-        ws = new window.WebSocket(`${WS_BASE}/${phoneNumber}`);
+        // Usa a classe WebSocket nativa preservada (antes da sobrescrita)
+        if (!NativeWebSocket) {
+            wsDebugError('❌ Classe WebSocket nativa não encontrada!');
+            return;
+        }
+        wsDebugLog('🔌 Conectando WebSocket para:', phoneNumber, 'URL:', `${WS_BASE}/${phoneNumber}`);
+        ws = new NativeWebSocket(`${WS_BASE}/${phoneNumber}`);
         
         ws.onopen = () => {
             wsDebugLog('✅ WebSocket conectado!');
@@ -45,7 +54,9 @@ const WebSocketManager = {
         
         ws.onmessage = (e) => {
             try {
+                wsDebugLog('📨 Mensagem WebSocket recebida (raw):', e.data);
                 const data = JSON.parse(e.data);
+                wsDebugLog('📨 Mensagem WebSocket parseada:', data);
                 handleWebSocketMessage(data, handlers);
             } catch (error) {
                 wsDebugError('❌ Erro ao processar mensagem WebSocket:', error);
@@ -80,15 +91,23 @@ const WebSocketManager = {
      * Verifica se WebSocket está conectado.
      */
     isConnected() {
-        return ws && ws.readyState === window.WebSocket.OPEN;
+        if (!NativeWebSocket) return false;
+        return ws && ws.readyState === NativeWebSocket.OPEN;
     }
 };
 
 // Expõe globalmente como WebSocketManager para evitar conflito com WebSocket nativo
 if (typeof window !== 'undefined') {
-    window.WebSocketManager = WebSocket;
+    // Preserva a classe nativa antes de sobrescrever
+    const OriginalWebSocket = window.WebSocket;
+    
+    window.WebSocketManager = WebSocketManager;
     // Mantém compatibilidade com código antigo que usa WebSocket.connectWebSocket
-    window.WebSocket = WebSocket;
+    window.WebSocket = WebSocketManager;
+    // Preserva acesso à classe nativa
+    window.WebSocket.Native = OriginalWebSocket;
+    
+    if (WS_DEBUG) wsDebugLog('✅ WebSocketManager exposto globalmente');
 }
 
 /**
@@ -96,28 +115,40 @@ if (typeof window !== 'undefined') {
  */
 function handleWebSocketMessage(data, handlers) {
     const event = data.event;
+    wsDebugLog('🔔 Processando evento WebSocket:', event, 'Payload:', data.payload);
     
     switch (event) {
         case 'auth_failure':
+            wsDebugLog('🔴 Auth failure detectado');
             if (handlers.onAuthFailure) handlers.onAuthFailure();
             break;
         case 'qr':
+            wsDebugLog('📱 QR code recebido');
             if (handlers.onQR) handlers.onQR(data.qr);
             break;
         case 'ready':
+            wsDebugLog('✅ Ready recebido');
             if (handlers.onReady) handlers.onReady();
             break;
         case 'message':
         case 'message.any':
-            if (handlers.onMessage) handlers.onMessage(data.payload);
+            wsDebugLog('💬 Mensagem recebida via WebSocket!', data.payload);
+            if (handlers.onMessage) {
+                wsDebugLog('📤 Chamando handler onMessage...');
+                handlers.onMessage(data.payload);
+            } else {
+                wsDebugError('⚠️ Handler onMessage não encontrado!');
+            }
             break;
         case 'message.ack':
+            wsDebugLog('✓ Confirmação de mensagem recebida');
             if (handlers.onMessageAck) handlers.onMessageAck(data.payload);
             break;
         case 'chat.update':
+            wsDebugLog('🔄 Chat atualizado');
             if (handlers.onChatUpdate) handlers.onChatUpdate(data.payload);
             break;
         default:
-            wsDebugLog('📡 Evento não tratado:', event);
+            wsDebugLog('📡 Evento não tratado:', event, 'Dados completos:', data);
     }
 }

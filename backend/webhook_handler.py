@@ -40,15 +40,29 @@ async def handle_webhook(request: Request) -> JSONResponse:
         
         event_type: str = data.get("event", "unknown")
         session: str = data.get("session", "unknown")
+        payload = data.get("payload", {})
         
-        logger.info(f"Webhook recebido: event={event_type}, session={session}")
+        # Log sempre visível (INFO level) para webhooks recebidos
+        logger.info("=" * 60)
+        logger.info(f"📨 WEBHOOK RECEBIDO: event={event_type}, session={session}")
+        logger.info(f"   Payload keys: {list(payload.keys()) if isinstance(payload, dict) else 'N/A'}")
+        
+        # Log detalhado para mensagens
+        if event_type in ["message", "message.any"]:
+            from_field = payload.get("from", "unknown")
+            body = payload.get("body", "")
+            logger.info(f"💬 MENSAGEM: from={from_field}, body={body[:100]}...")
+            logger.info(f"   fromMe: {payload.get('fromMe', 'N/A')}, timestamp: {payload.get('timestamp', 'N/A')}")
+        logger.info("=" * 60)
         
         # Faz broadcast para todas as conexões WebSocket
         try:
+            active_connections = sum(len(conns) for conns in manager._connections.values())
+            logger.info(f"📡 Fazendo broadcast para {active_connections} conexões WebSocket")
             await manager.broadcast(data)
-            logger.debug(f"Webhook broadcast enviado para WebSocket clients")
+            logger.info(f"✅ Webhook broadcast enviado com sucesso para {active_connections} clientes")
         except Exception as broadcast_error:
-            logger.error(f"Erro ao fazer broadcast do webhook: {broadcast_error}")
+            logger.error(f"❌ Erro ao fazer broadcast do webhook: {broadcast_error}")
             # Não falha o webhook se o broadcast falhar
         
         logger.info(f"Webhook processado com sucesso: {event_type}")

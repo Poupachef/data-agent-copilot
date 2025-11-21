@@ -93,7 +93,7 @@ const API = {
                 webjs: { tagsEventsOn: false },
                 webhooks: [{
                     url: 'http://host.docker.internal:8001/webhook',
-                    events: ['message', 'session.status'],
+                    events: ['message.any', 'message.ack', 'session.status'],
                     hmac: null,
                     retries: null,
                     customHeaders: null

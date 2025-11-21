@@ -63,14 +63,31 @@ const Session = {
      */
     async configureWebhooks(session = DEFAULT_SESSION) {
         try {
-            await API.updateSessionConfig(session, {
+            sessionDebugLog('🔧 Configurando webhooks para sessão:', session);
+            const webhookConfig = {
                 webhooks: [{
                     url: 'http://host.docker.internal:8001/webhook',
                     events: ['message.any', 'message.ack', 'session.status']
                 }]
-            });
+            };
+            sessionDebugLog('📤 Enviando configuração de webhook:', webhookConfig);
+            const result = await API.updateSessionConfig(session, webhookConfig);
+            sessionDebugLog('✅ Webhooks configurados com sucesso:', result);
+            
+            // Verifica se os webhooks foram realmente configurados
+            try {
+                const sessionInfo = await API.getSessionStatus(session);
+                if (sessionInfo.config && sessionInfo.config.webhooks) {
+                    sessionDebugLog('✅ Webhooks confirmados na sessão:', sessionInfo.config.webhooks);
+                } else {
+                    sessionDebugError('⚠️ Webhooks não encontrados na configuração da sessão!');
+                }
+            } catch (checkError) {
+                sessionDebugError('⚠️ Erro ao verificar webhooks:', checkError);
+            }
         } catch (e) {
-            sessionDebugLog('⚠️ Erro ao configurar webhooks:', e.message);
+            sessionDebugError('❌ Erro ao configurar webhooks:', e);
+            throw e;
         }
     },
 
