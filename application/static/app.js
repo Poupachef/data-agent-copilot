@@ -495,19 +495,31 @@ async function loadChats() {
         debugLog('✅ Chats recebidos:', chats ? chats.length : 0);
         
         if (chatModule.renderChats) {
-            chatListEl.innerHTML = chatModule.renderChats(chats, 'selectChat');
+            const html = await chatModule.renderChats(chats, 'selectChat', session);
+            chatListEl.innerHTML = html;
             debugLog('✅ Chats renderizados com sucesso!');
             
-            // Adiciona event listeners para as estrelas de favorito
-            chatListEl.querySelectorAll('.favorite-star').forEach(star => {
-                const chatId = star.closest('.chat-item')?.getAttribute('data-chat-id');
+            // Adiciona event listeners para os chat-items e estrelas de favorito
+            chatListEl.querySelectorAll('.chat-item').forEach(item => {
+                const chatId = item.getAttribute('data-chat-id');
                 if (chatId) {
-                    star.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        if (typeof window.toggleFavorite === 'function') {
-                            window.toggleFavorite(chatId);
+                    // Event listener para selecionar o chat
+                    item.addEventListener('click', () => {
+                        if (typeof window.selectChat === 'function') {
+                            window.selectChat(chatId);
                         }
                     });
+                    
+                    // Event listener para a estrela de favorito
+                    const star = item.querySelector('.favorite-star');
+                    if (star) {
+                        star.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            if (typeof window.toggleFavorite === 'function') {
+                                window.toggleFavorite(chatId);
+                            }
+                        });
+                    }
                 }
             });
     } else {
@@ -1176,6 +1188,10 @@ window.toggleFavorite = async function(chatId) {
         try {
             const isNowFavorite = await window.Favorites.toggleFavorite(session, chatId);
             debugLog(`Favorito ${isNowFavorite ? 'adicionado' : 'removido'}:`, chatId);
+            
+            // Limpa o cache de favoritos para forçar reload
+            window.Favorites.clearCache();
+            
             // Recarrega a lista de chats para atualizar a UI
             // Se estiver mostrando favoritos, recarrega favoritos; senão, recarrega todas
             if (showingFavorites) {
@@ -1207,7 +1223,7 @@ async function showFavorites() {
     if (apiModule && apiModule.getChats) {
         try {
             const allChats = await apiModule.getChats(session);
-            const favorites = typeof window.Favorites !== 'undefined' ? window.Favorites.getFavorites() : [];
+            const favorites = typeof window.Favorites !== 'undefined' ? await window.Favorites.getFavorites(session) : [];
             const favoriteChats = allChats.filter(chat => {
                 const chatId = chat.id?._serialized || chat.id;
                 return favorites.includes(chatId);
