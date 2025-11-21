@@ -392,15 +392,6 @@ body {
     background: white !important;
 }
 
-.chat-item:hover {
-    background: #f8f9fa !important;
-}
-
-/* Hover não deve sobrescrever active */
-.chat-item.active:hover {
-    background: white !important;
-}
-
 .chat-avatar {
     width: 50px;
     height: 50px;
@@ -438,6 +429,10 @@ body {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 5px;
+    transition: background-color 0.2s ease;
+    border-radius: 4px;
+    padding: 4px 8px;
+    margin: -4px -8px;
 }
 
 .chat-name {
@@ -446,6 +441,17 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    color: #65676b; /* Cinza por padrão */
+    transition: color 0.2s ease;
+}
+
+/* Hover: muda fundo do chat-header para branco e nome para preto */
+.chat-item:hover .chat-header {
+    background: white;
+}
+
+.chat-item:hover .chat-name {
+    color: #1c1e21; /* Preto no hover */
 }
 
 .chat-time {
