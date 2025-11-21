@@ -120,11 +120,47 @@ const wsHandlers = {
         handleNewMessage(payload);
     },
     onMessageAck: (ackData) => {
-        debugLog('Confirmação de mensagem:', ackData);
+        debugLog('✓ Confirmação de mensagem recebida:', ackData);
+        
+        // Se a mensagem foi lida (ack === 2 ou 3), atualiza a lista de chats
+        // Isso acontece quando mensagens são lidas pelo celular
+        if (ackData) {
+            const ack = ackData.ack;
+            const chatId = ackData.from || ackData.chatId || ackData.id;
+            
+            debugLog('📖 Detalhes do ACK:', { ack, chatId, ackData });
+            
+            // ack === 2 significa que foi lido pelo destinatário
+            // ack === 3 significa que foi lido por todos (em grupos)
+            if (ack === 2 || ack === 3) {
+                debugLog('📖 Mensagem foi lida (ack=' + ack + '), atualizando lista de chats...');
+                // Aguarda um pouco para garantir que o servidor processou
+                setTimeout(() => {
+                    if (typeof loadChats === 'function' || typeof window.loadChats === 'function') {
+                        debugLog('🔄 Recarregando chats após mensagem lida...');
+                        (loadChats || window.loadChats)();
+                    }
+                }, 800);
+            }
+        }
     },
     onChatUpdate: (chatData) => {
-        debugLog('Chat atualizado:', chatData);
-        loadChats();
+        debugLog('🔄 Chat atualizado via WebSocket:', chatData);
+        
+        // Extrai informações do chat atualizado
+        const chatId = chatData?.id?._serialized || chatData?.id || chatData?.chatId;
+        const unreadCount = chatData?.unreadCount ?? chatData?.unread ?? 0;
+        
+        debugLog('📋 Detalhes do chat atualizado:', { chatId, unreadCount, chatData });
+        
+        // Sempre atualiza a lista quando há atualização no chat
+        // Isso inclui quando mensagens são lidas pelo celular
+        if (typeof loadChats === 'function' || typeof window.loadChats === 'function') {
+            debugLog('🔄 Recarregando chats após chat.update...');
+            setTimeout(() => {
+                (loadChats || window.loadChats)();
+            }, 500);
+        }
     }
 };
 
@@ -855,8 +891,15 @@ function showChat() {
         debugError('❌ WebSocketManager não disponível!', typeof window.WebSocketManager, typeof WebSocketManager);
     }
     if (typeof loadChats === 'function') {
-    loadChats();
-}
+        loadChats();
+    }
+    
+    // Inicia polling quando a interface de chat é exibida
+    if (typeof window.startChatListPolling === 'function') {
+        setTimeout(() => {
+            window.startChatListPolling();
+        }, 1000); // Aguarda 1s para garantir que a interface está totalmente carregada
+    }
 }
 
 // Torna showChat global
@@ -1069,4 +1112,74 @@ messageInput.onkeypress = (e) => {
     if (phone) {
         checkStatus();
     }
+    
+    // Polling periódico para atualizar lista de chats (fallback caso eventos WebSocket não funcionem)
+    // Atualiza a cada 5 segundos quando a interface de chat estiver visível
+    let chatListPollingInterval = null;
+    
+    function startChatListPolling() {
+        // Limpa intervalo anterior se existir
+        if (chatListPollingInterval) {
+            clearInterval(chatListPollingInterval);
+        }
+        
+        // Verifica se a interface de chat está visível
+        const chatInterfaceEl = document.getElementById('chat-interface');
+        if (chatInterfaceEl && chatInterfaceEl.style.display !== 'none') {
+            debugLog('🔄 Iniciando polling periódico da lista de chats (a cada 5s)');
+            chatListPollingInterval = setInterval(() => {
+                const chatInterfaceVisible = chatInterfaceEl && chatInterfaceEl.style.display !== 'none';
+                if (chatInterfaceVisible && (typeof loadChats === 'function' || typeof window.loadChats === 'function')) {
+                    debugLog('🔄 Polling: atualizando lista de chats...');
+                    (loadChats || window.loadChats)();
+                } else {
+                    // Para o polling se a interface não estiver visível
+                    if (chatListPollingInterval) {
+                        clearInterval(chatListPollingInterval);
+                        chatListPollingInterval = null;
+                        debugLog('⏸️ Polling pausado (interface de chat não visível)');
+                    }
+                }
+            }, 5000); // Atualiza a cada 5 segundos
+        }
+    }
+    
+    function stopChatListPolling() {
+        if (chatListPollingInterval) {
+            clearInterval(chatListPollingInterval);
+            chatListPollingInterval = null;
+            debugLog('⏸️ Polling da lista de chats parado');
+        }
+    }
+    
+    // Observa mudanças na visibilidade da interface de chat
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                const chatInterfaceEl = document.getElementById('chat-interface');
+                if (chatInterfaceEl) {
+                    const isVisible = chatInterfaceEl.style.display !== 'none';
+                    if (isVisible) {
+                        startChatListPolling();
+                    } else {
+                        stopChatListPolling();
+                    }
+                }
+            }
+        });
+    });
+    
+    // Observa a interface de chat
+    const chatInterfaceEl = document.getElementById('chat-interface');
+    if (chatInterfaceEl) {
+        observer.observe(chatInterfaceEl, { attributes: true, attributeFilter: ['style'] });
+        // Inicia polling se já estiver visível
+        if (chatInterfaceEl.style.display !== 'none') {
+            startChatListPolling();
+        }
+    }
+    
+    // Expõe funções globalmente para controle manual se necessário
+    window.startChatListPolling = startChatListPolling;
+    window.stopChatListPolling = stopChatListPolling;
 });

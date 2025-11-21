@@ -35,7 +35,7 @@ const Session = {
             await API.updateSessionConfig(DEFAULT_SESSION, {
                 webhooks: [{
                     url: 'http://host.docker.internal:8001/webhook',
-                    events: ['message.any', 'message.ack', 'session.status']
+                    events: ['message.any', 'message.ack', 'session.status', 'chat.update']
                 }]
             });
         }
@@ -67,7 +67,7 @@ const Session = {
             const webhookConfig = {
                 webhooks: [{
                     url: 'http://host.docker.internal:8001/webhook',
-                    events: ['message.any', 'message.ack', 'session.status']
+                    events: ['message.any', 'message.ack', 'session.status', 'chat.update']
                 }]
             };
             sessionDebugLog('📤 Enviando configuração de webhook:', webhookConfig);

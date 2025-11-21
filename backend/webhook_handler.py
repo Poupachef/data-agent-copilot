@@ -53,6 +53,10 @@ async def handle_webhook(request: Request) -> JSONResponse:
             body = payload.get("body", "")
             logger.info(f"💬 MENSAGEM: from={from_field}, body={body[:100]}...")
             logger.info(f"   fromMe: {payload.get('fromMe', 'N/A')}, timestamp: {payload.get('timestamp', 'N/A')}")
+        elif event_type == "chat.update":
+            logger.info(f"🔄 CHAT UPDATE: chatId={payload.get('id', 'N/A')}, unreadCount={payload.get('unreadCount', 'N/A')}")
+        elif event_type == "message.ack":
+            logger.info(f"✓ MESSAGE ACK: chatId={payload.get('from', 'N/A')}, ack={payload.get('ack', 'N/A')}")
         logger.info("=" * 60)
         
         # Faz broadcast para todas as conexões WebSocket

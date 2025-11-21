@@ -145,8 +145,13 @@ function handleWebSocketMessage(data, handlers) {
             if (handlers.onMessageAck) handlers.onMessageAck(data.payload);
             break;
         case 'chat.update':
-            wsDebugLog('🔄 Chat atualizado');
-            if (handlers.onChatUpdate) handlers.onChatUpdate(data.payload);
+            wsDebugLog('🔄 Chat atualizado via WebSocket');
+            wsDebugLog('   Payload do chat.update:', data.payload);
+            if (handlers.onChatUpdate) {
+                handlers.onChatUpdate(data.payload);
+            } else {
+                wsDebugError('⚠️ Handler onChatUpdate não encontrado!');
+            }
             break;
         default:
             wsDebugLog('📡 Evento não tratado:', event, 'Dados completos:', data);
