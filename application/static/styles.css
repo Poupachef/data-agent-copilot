@@ -358,14 +358,47 @@ body {
     padding: 15px 20px;
     cursor: pointer;
     border-bottom: 1px solid #f0f2f5;
+    transition: background-color 0.2s ease;
+    background: white; /* Cor padrão */
+}
+
+/* Conversa onde a última mensagem não foi lida: fundo rosa */
+.chat-item.unread {
+    background: #ffe6f0 !important;
+}
+
+/* Conversa onde a última mensagem foi recebida (não enviada por mim): fundo azul */
+.chat-item.received {
+    background: #e3f2fd !important;
+}
+
+/* Conversa onde a última mensagem foi enviada por mim: fundo cinza */
+.chat-item.sent {
+    background: #f5f5f5 !important;
+}
+
+/* Grupo onde última mensagem foi lida por mim: fundo verde claro */
+.chat-item.group-read {
+    background: #e8f5e9 !important;
+}
+
+/* Grupo onde a última mensagem não foi lida por mim: fundo verde escuro */
+.chat-item.group-unread {
+    background: #c8e6c9 !important;
+}
+
+/* Conversa aberta: fundo branco - DEVE VIR POR ÚLTIMO PARA TER PRIORIDADE */
+.chat-item.active {
+    background: white !important;
 }
 
 .chat-item:hover {
-    background: #f8f9fa;
+    background: #f8f9fa !important;
 }
 
-.chat-item.active {
-    background: #e7f3ff;
+/* Hover não deve sobrescrever active */
+.chat-item.active:hover {
+    background: white !important;
 }
 
 .chat-avatar {

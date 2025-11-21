@@ -303,6 +303,8 @@ const Chat = {
      * Renderiza lista de chats.
      */
     renderChats(chats, onChatSelect) {
+        const currentChatId = Chat.getCurrentChat();
+        
         return chats.map(chat => {
             const chatId = chat.id._serialized || chat.id;
             if (!chatId) return '';
@@ -313,16 +315,90 @@ const Chat = {
             const lastMsgTime = lastMsg?.timestamp
                 ? Chat.formatMessageTime(lastMsg.timestamp)
                 : '';
-            const unread = chat.unreadCount > 0
-                ? `<span class="unread-badge">${chat.unreadCount}</span>`
+            // Verifica unreadCount em diferentes possíveis locais
+            const unreadCount = chat.unreadCount ?? 
+                               chat.unread ?? 
+                               (chat._chat?.unreadCount) ?? 
+                               (chat._chat?.unread) ?? 
+                               0;
+            
+            // Debug para verificar unreadCount
+            if (unreadCount > 0) {
+                chatDebugLog('Conversa não lida detectada:', { 
+                    name, 
+                    chatId, 
+                    unreadCount, 
+                    chatUnreadCount: chat.unreadCount,
+                    chatUnread: chat.unread,
+                    chat_chat_unreadCount: chat._chat?.unreadCount,
+                    chat_chat_unread: chat._chat?.unread
+                });
+            }
+            
+            const unread = unreadCount > 0
+                ? `<span class="unread-badge">${unreadCount}</span>`
                 : '';
             const ackIcon = Chat.getAckIcon(lastMsg?.ack, lastMsg?.fromMe);
 
-            const isGroup = chat.isGroup || false;
+            // Verifica isGroup em _chat.isGroup ou isGroup direto (mesma lógica usada em outras partes)
+            const isGroup = chat._chat?.isGroup ?? chat.isGroup ?? false;
             const avatarIcon = isGroup ? '👥' : '👤';
             
+            // Debug para verificar detecção de grupos
+            if (isGroup) {
+                chatDebugLog('Grupo detectado:', { name, chatId, unreadCount, isGroup });
+            }
+            
+            // Determina a classe CSS baseada nas regras
+            let statusClass = '';
+            const isActive = currentChatId === chatId;
+            
+            chatDebugLog('Determinando classe CSS:', { 
+                name, 
+                chatId, 
+                isActive, 
+                isGroup, 
+                unreadCount, 
+                lastMsgFromMe: lastMsg?.fromMe 
+            });
+            
+            // Se está ativo, não aplica outras classes (active tem prioridade)
+            if (!isActive) {
+                if (isGroup) {
+                    // Grupo onde a última mensagem não foi lida por mim: fundo verde escuro
+                    if (unreadCount > 0) {
+                        statusClass = 'group-unread';
+                        chatDebugLog('Aplicando classe group-unread (verde escuro)');
+                    } else {
+                        // Grupo onde última mensagem foi lida por mim: fundo verde claro
+                        statusClass = 'group-read';
+                        chatDebugLog('Aplicando classe group-read (verde claro)');
+                    }
+                } else {
+                    // Conversa individual
+                    if (unreadCount > 0) {
+                        // Conversa onde a última mensagem não foi lida: fundo rosa
+                        statusClass = 'unread';
+                        chatDebugLog('Aplicando classe unread (rosa)');
+                    } else if (lastMsg) {
+                        if (lastMsg.fromMe) {
+                            // Conversa onde a última mensagem foi enviada por mim: fundo cinza
+                            statusClass = 'sent';
+                            chatDebugLog('Aplicando classe sent (cinza)');
+                        } else {
+                            // Conversa onde a última mensagem foi recebida (não enviada por mim): fundo azul
+                            statusClass = 'received';
+                            chatDebugLog('Aplicando classe received (azul)');
+                        }
+                    }
+                }
+            }
+            
+            // Monta as classes: active sempre por último para ter prioridade
+            const classes = ['chat-item', statusClass, isActive ? 'active' : ''].filter(c => c).join(' ');
+            
             return `
-                <div class="chat-item" data-chat-id="${chatId}" onclick="window.selectChat('${chatId}'); event.stopPropagation(); return false;">
+                <div class="${classes}" data-chat-id="${chatId}" onclick="window.selectChat('${chatId}'); event.stopPropagation(); return false;">
                     <div class="chat-avatar">
                         <div class="avatar-placeholder">${avatarIcon}</div>
                     </div>
