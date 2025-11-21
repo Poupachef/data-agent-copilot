@@ -240,11 +240,27 @@ const Chat = {
                         message.author?.name || 
                         message.notifyName ||
                         message.fromName ||
-                        (message.from ? message.from.split('@')[0] : '') || 
                         null;
             
-            // Log de erro se não conseguir encontrar o nome
+            // Se não encontrou nome, tenta extrair do campo 'from'
+            if (!senderName && message.from) {
+                const fromId = message.from.split('@')[0];
+                // Verifica se parece um número de telefone (começa com código de país, tem 10-15 dígitos)
+                // IDs internos do WhatsApp geralmente são muito longos (15+ dígitos) e não começam com código de país comum
+                const isPhoneNumber = /^[1-9]\d{9,14}$/.test(fromId) && fromId.length <= 15;
+                
+                if (isPhoneNumber) {
+                    senderName = fromId;
+                } else {
+                    // É um ID interno do WhatsApp, não mostra o ID bruto
+                    senderName = 'Membro do grupo';
+                    chatDebugLog('ID interno detectado, usando "Membro do grupo":', { from: message.from, fromId });
+                }
+            }
+            
+            // Fallback final
             if (!senderName) {
+                senderName = 'Desconhecido';
                 chatDebugError('❌ ERRO: Não foi possível encontrar o nome ou número do contato. Estrutura da mensagem:', {
                     hasContact: !!message.contact,
                     contact: message.contact,
@@ -255,7 +271,6 @@ const Chat = {
                     from: message.from,
                     messageKeys: Object.keys(message)
                 });
-                senderName = message.from ? message.from.split('@')[0] : 'Desconhecido';
             } else {
                 chatDebugLog('Nome do remetente encontrado:', { 
                     senderName, 
@@ -265,7 +280,8 @@ const Chat = {
                             message.author?.name ? 'author.name' :
                             message.notifyName ? 'notifyName' :
                             message.fromName ? 'fromName' :
-                            'from (número)',
+                            (message.from && /^[1-9]\d{9,14}$/.test(message.from.split('@')[0]) && message.from.split('@')[0].length <= 15) ? 'from (número)' :
+                            'from (ID interno - usando "Membro do grupo")',
                     from: message.from 
                 });
             }

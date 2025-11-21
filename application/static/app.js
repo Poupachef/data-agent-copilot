@@ -501,11 +501,26 @@ function renderMessages(messages) {
                                 msg.author?.name || 
                                 msg.notifyName ||
                                 msg.fromName ||
-                                (msg.from ? msg.from.split('@')[0] : '') || 
                                 null;
+                    
+                    // Se não encontrou nome, tenta extrair do campo 'from'
+                    if (!senderName && msg.from) {
+                        const fromId = msg.from.split('@')[0];
+                        // Verifica se parece um número de telefone (começa com código de país, tem 10-15 dígitos)
+                        const isPhoneNumber = /^[1-9]\d{9,14}$/.test(fromId) && fromId.length <= 15;
+                        
+                        if (isPhoneNumber) {
+                            senderName = fromId;
+                        } else {
+                            // É um ID interno do WhatsApp, não mostra o ID bruto
+                            senderName = 'Membro do grupo';
+                            debugLog('ID interno detectado, usando "Membro do grupo":', { from: msg.from, fromId });
+                        }
+                    }
                     
                     // Log de erro se não conseguir encontrar o nome
                     if (!senderName) {
+                        senderName = 'Desconhecido';
                         debugError('❌ ERRO: Não foi possível encontrar o nome ou número do contato. Estrutura da mensagem:', {
                             hasContact: !!msg.contact,
                             contact: msg.contact,
@@ -516,7 +531,6 @@ function renderMessages(messages) {
                             from: msg.from,
                             messageKeys: Object.keys(msg)
                         });
-                        senderName = msg.from ? msg.from.split('@')[0] : 'Desconhecido';
                     } else {
                         debugLog('Nome do remetente encontrado (fallback):', { 
                             senderName, 
@@ -526,7 +540,8 @@ function renderMessages(messages) {
                                     msg.author?.name ? 'author.name' :
                                     msg.notifyName ? 'notifyName' :
                                     msg.fromName ? 'fromName' :
-                                    'from (número)',
+                                    (msg.from && /^[1-9]\d{9,14}$/.test(msg.from.split('@')[0]) && msg.from.split('@')[0].length <= 15) ? 'from (número)' :
+                                    'from (ID interno - usando "Membro do grupo")',
                             from: msg.from 
                         });
                     }
@@ -635,11 +650,26 @@ function createSimpleMessageHtml(message) {
                     message.author?.name || 
                     message.notifyName ||
                     message.fromName ||
-                    (message.from ? message.from.split('@')[0] : '') || 
                     null;
+        
+        // Se não encontrou nome, tenta extrair do campo 'from'
+        if (!senderName && message.from) {
+            const fromId = message.from.split('@')[0];
+            // Verifica se parece um número de telefone (começa com código de país, tem 10-15 dígitos)
+            const isPhoneNumber = /^[1-9]\d{9,14}$/.test(fromId) && fromId.length <= 15;
+            
+            if (isPhoneNumber) {
+                senderName = fromId;
+            } else {
+                // É um ID interno do WhatsApp, não mostra o ID bruto
+                senderName = 'Membro do grupo';
+                debugLog('ID interno detectado, usando "Membro do grupo":', { from: message.from, fromId });
+            }
+        }
         
         // Log de erro se não conseguir encontrar o nome
         if (!senderName) {
+            senderName = 'Desconhecido';
             debugError('❌ ERRO: Não foi possível encontrar o nome ou número do contato. Estrutura da mensagem:', {
                 hasContact: !!message.contact,
                 contact: message.contact,
@@ -650,7 +680,6 @@ function createSimpleMessageHtml(message) {
                 from: message.from,
                 messageKeys: Object.keys(message)
             });
-            senderName = message.from ? message.from.split('@')[0] : 'Desconhecido';
         }
     }
     
