@@ -183,7 +183,7 @@ async function generateQR() {
                 ui.updateStatus('QR Code pronto! Escaneie com seu WhatsApp');
                 ui.notify('QR Code gerado!', 'success');
             }
-        } else {
+            } else {
             // Já está conectado
             const status = await API.getSessionStatus(session);
             if (ui) ui.updateSessionInfo(status);
@@ -287,7 +287,7 @@ async function checkStatus() {
                 const qrData = await API.getQRCode(session);
                 const qrUrl = URL.createObjectURL(qrData);
                 if (ui) ui.showQR(qrUrl);
-            } catch (e) {
+    } catch (e) {
                 debugError('Erro ao obter QR code:', e);
             }
         }
@@ -556,7 +556,7 @@ function renderMessages(messages) {
                         
                         if (isPhoneNumber) {
                             senderName = fromId;
-                        } else {
+    } else {
                             // É um ID interno do WhatsApp, não mostra o ID bruto
                             senderName = 'Membro do grupo';
                             debugLog('ID interno detectado, usando "Membro do grupo":', { from: msg.from, fromId });
@@ -591,16 +591,16 @@ function renderMessages(messages) {
                         });
                     }
                 }
-
-        return `
+    
+    return `
                     <div class="message ${msg.fromMe ? 'sent' : 'received'}">
-                        <div class="message-content">
+            <div class="message-content">
                             ${showSenderName ? `<div class="message-sender">${senderName}</div>` : ''}
-                            ${messageText ? `<div class="message-text">${messageText}</div>` : ''}
-                            <div class="message-time">${time}</div>
-                </div>
+                ${messageText ? `<div class="message-text">${messageText}</div>` : ''}
+                <div class="message-time">${time}</div>
             </div>
-        `;
+        </div>
+    `;
     }).join('');
             debugLog('✅ Mensagens renderizadas com fallback simples');
         }
@@ -648,7 +648,17 @@ async function sendMessage() {
         if (chatModule && chatModule.sendMessage) {
             // Usa Chat.sendMessage
             await chatModule.sendMessage(message);
-    } else {
+            debugLog('✅ Mensagem enviada com sucesso');
+            
+            // Atualiza a lista de chats para refletir a nova mensagem enviada
+            if (typeof loadChats === 'function' || typeof window.loadChats === 'function') {
+                debugLog('🔄 Atualizando lista de chats após enviar mensagem...');
+                // Aguarda um pouco para garantir que a mensagem foi processada pelo servidor
+                setTimeout(() => {
+                    (loadChats || window.loadChats)();
+                }, 500);
+            }
+        } else {
             throw new Error('Nenhum método disponível para enviar mensagem');
         }
     } catch (error) {
