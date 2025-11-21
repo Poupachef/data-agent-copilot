@@ -526,10 +526,12 @@ async function selectChat(chatId) {
     const noChatSelected = document.getElementById('no-chat-selected');
     const chatMessagesEl = document.getElementById('chat-messages');
     const messageInputContainer = document.getElementById('message-input-container');
+    const chatHeader = document.querySelector('.chat-area .chat-header');
     
     if (noChatSelected) noChatSelected.style.display = 'none';
     if (chatMessagesEl) chatMessagesEl.style.display = 'flex';
     if (messageInputContainer) messageInputContainer.style.display = 'flex';
+    if (chatHeader) chatHeader.classList.add('active');
     
     try {
         // Garante que as informações do chat foram carregadas antes de renderizar
