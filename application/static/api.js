@@ -206,6 +206,16 @@ const API = {
                 session
             })
         });
+    },
+
+    /**
+     * Marca mensagens não lidas como lidas em um chat.
+     */
+    async markMessagesAsRead(session = 'default', chatId) {
+        return await apiRequest(`/${session}/chats/${encodeURIComponent(chatId)}/messages/read`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
     }
 };
 

@@ -355,6 +355,27 @@ async function selectChat(chatId) {
         debugError('Erro ao obter chatModule:', err);
     }
     
+    // Marca mensagens como lidas ao abrir a conversa
+    const apiModule = (typeof API !== 'undefined' ? API : null) || (typeof window.API !== 'undefined' ? window.API : null);
+    if (apiModule && apiModule.markMessagesAsRead) {
+        try {
+            debugLog('📖 Marcando mensagens como lidas para o chat:', chatId);
+            await apiModule.markMessagesAsRead(session, chatId);
+            debugLog('✅ Mensagens marcadas como lidas');
+            
+            // Aguarda um pouco e recarrega a lista de chats para atualizar o unreadCount
+            setTimeout(() => {
+                if (typeof loadChats === 'function' || typeof window.loadChats === 'function') {
+                    debugLog('🔄 Recarregando lista de chats após marcar como lida...');
+                    (loadChats || window.loadChats)();
+                }
+            }, 500);
+        } catch (error) {
+            debugError('⚠️ Erro ao marcar mensagens como lidas:', error);
+            // Não bloqueia a abertura da conversa se falhar
+        }
+    }
+    
     try {
         // Define chat atual - verifica de forma segura
         if (chatModule && chatModule.setCurrentChat) {
@@ -362,7 +383,6 @@ async function selectChat(chatId) {
         }
         
         // Busca informações do chat para saber se é grupo
-        const apiModule = (typeof API !== 'undefined' ? API : null) || (typeof window.API !== 'undefined' ? window.API : null);
         if (apiModule && apiModule.getChats && chatModule && chatModule.setCurrentChatInfo) {
             try {
                 const chats = await apiModule.getChats(session);
