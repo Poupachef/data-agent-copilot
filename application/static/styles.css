@@ -179,25 +179,17 @@ body {
     background: #f0f2f5;
     border-bottom: 1px solid #e4e6eb;
     display: none; /* Escondido por padrão, será mostrado quando uma conversa for selecionada */
-    justify-content: space-between;
     align-items: center;
     padding: 10px 20px;
     flex-shrink: 0;
     height: 60px;
     z-index: 10;
+    gap: 15px;
 }
 
 /* Mostra o cabeçalho quando uma conversa está selecionada */
 .chat-area .chat-header.active {
     display: flex;
-}
-
-.header-left {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    flex: 1;
-    min-width: 0;
 }
 
 .user-info {

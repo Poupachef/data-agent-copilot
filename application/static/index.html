@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WhatsApp Web Clone</title>
-    <link rel="stylesheet" href="/static/styles.css?v=2.5">
+    <link rel="stylesheet" href="/static/styles.css?v=2.6">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
@@ -185,24 +185,12 @@
             <div class="chat-area">
                 <!-- Header da Conversa -->
                 <div class="chat-header">
-                    <div class="header-left">
-                        <div class="user-avatar">
-                            <img id="user-avatar" src="https://via.placeholder.com/40" alt="Avatar">
-                        </div>
-                        <div class="user-info">
-                            <h3 id="user-name">WhatsApp Web</h3>
-                            <span id="connection-status" class="status-text">Conectado</span>
-                        </div>
+                    <div class="user-avatar">
+                        <img id="user-avatar" src="https://via.placeholder.com/40" alt="Avatar">
                     </div>
-                    <div class="header-right">
-                        <div id="debug-area" class="debug-area" style="margin-right: 20px;">
-                            <div id="ws-status" class="ws-status">🔴 WebSocket</div>
-                            <div id="event-counter" class="event-counter">0 eventos</div>
-                            <div id="last-event" class="last-event">Aguardando...</div>
-                        </div>
-                        <button id="logout-btn" class="header-btn" title="Sair">
-                            <i class="fas fa-sign-out-alt"></i>
-                        </button>
+                    <div class="user-info">
+                        <h3 id="user-name">WhatsApp Web</h3>
+                        <span id="connection-status" class="status-text">Conectado</span>
                     </div>
                 </div>
                 
