@@ -374,24 +374,24 @@ const Chat = {
                         statusClass = 'group-read';
                         chatDebugLog('Aplicando classe group-read (verde claro)');
                     }
-                } else {
-                    // Conversa individual
-                    if (unreadCount > 0) {
-                        // Conversa onde a última mensagem não foi lida: fundo rosa
-                        statusClass = 'unread';
-                        chatDebugLog('Aplicando classe unread (rosa)');
-                    } else if (lastMsg) {
-                        if (lastMsg.fromMe) {
-                            // Conversa onde a última mensagem foi enviada por mim: fundo cinza
-                            statusClass = 'sent';
-                            chatDebugLog('Aplicando classe sent (cinza)');
-                        } else {
-                            // Conversa onde a última mensagem foi recebida (não enviada por mim): fundo azul
-                            statusClass = 'received';
-                            chatDebugLog('Aplicando classe received (azul)');
-                        }
+            } else {
+                // Conversa individual
+                if (unreadCount > 0) {
+                    // Conversa não lida: fundo rosa escuro
+                    statusClass = 'unread';
+                    chatDebugLog('Aplicando classe unread (rosa escuro)');
+                } else if (lastMsg) {
+                    if (lastMsg.fromMe) {
+                        // Conversa lida e respondida (última mensagem enviada por mim): fundo cinza
+                        statusClass = 'sent';
+                        chatDebugLog('Aplicando classe sent (cinza - lida e respondida)');
+                    } else {
+                        // Conversa lida e não respondida (última mensagem recebida): fundo rosa claro
+                        statusClass = 'received';
+                        chatDebugLog('Aplicando classe received (rosa claro - lida mas não respondida)');
                     }
                 }
+            }
             }
             
             // Monta as classes: active sempre por último para ter prioridade

@@ -362,17 +362,17 @@ body {
     background: white; /* Cor padrão */
 }
 
-/* Conversa onde a última mensagem não foi lida: fundo rosa */
+/* Conversa não lida: fundo rosa escuro */
 .chat-item.unread {
+    background: #ffb3d1 !important;
+}
+
+/* Conversa lida e não respondida (última mensagem recebida): fundo rosa claro */
+.chat-item.received {
     background: #ffe6f0 !important;
 }
 
-/* Conversa onde a última mensagem foi recebida (não enviada por mim): fundo azul */
-.chat-item.received {
-    background: #e3f2fd !important;
-}
-
-/* Conversa onde a última mensagem foi enviada por mim: fundo cinza */
+/* Conversa lida e respondida (última mensagem enviada por mim): fundo cinza */
 .chat-item.sent {
     background: #f5f5f5 !important;
 }
