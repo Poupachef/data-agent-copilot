@@ -272,9 +272,17 @@ const wsHandlers = {
                 debugLog('📖 Mensagem foi lida (ack=' + ack + '), atualizando lista de chats...');
                 // Aguarda um pouco para garantir que o servidor processou
                 setTimeout(() => {
-                    if (typeof loadChats === 'function' || typeof window.loadChats === 'function') {
-                        debugLog('🔄 Recarregando chats após mensagem lida...');
-                        (loadChats || window.loadChats)();
+                    // Atualiza a lista respeitando o estado de favoritos
+                    if (showingFavorites) {
+                        if (typeof showFavorites === 'function') {
+                            debugLog('🔄 Recarregando favoritos após mensagem lida...');
+                            showFavorites();
+                        }
+                    } else {
+                        if (typeof loadChats === 'function' || typeof window.loadChats === 'function') {
+                            debugLog('🔄 Recarregando chats após mensagem lida...');
+                            (loadChats || window.loadChats)();
+                        }
                     }
                 }, 800);
             }
@@ -291,12 +299,20 @@ const wsHandlers = {
         
         // Sempre atualiza a lista quando há atualização no chat
         // Isso inclui quando mensagens são lidas pelo celular
-        if (typeof loadChats === 'function' || typeof window.loadChats === 'function') {
-            debugLog('🔄 Recarregando chats após chat.update...');
-            setTimeout(() => {
-                (loadChats || window.loadChats)();
-            }, 500);
-        }
+        // Atualiza a lista respeitando o estado de favoritos
+        setTimeout(() => {
+            if (showingFavorites) {
+                if (typeof showFavorites === 'function') {
+                    debugLog('🔄 Recarregando favoritos após chat.update...');
+                    showFavorites();
+                }
+            } else {
+                if (typeof loadChats === 'function' || typeof window.loadChats === 'function') {
+                    debugLog('🔄 Recarregando chats após chat.update...');
+                    (loadChats || window.loadChats)();
+                }
+            }
+        }, 500);
     }
 };
 
@@ -572,9 +588,17 @@ async function selectChat(chatId) {
             
             // Aguarda um pouco e recarrega a lista de chats para atualizar o unreadCount
             setTimeout(() => {
-                if (typeof loadChats === 'function' || typeof window.loadChats === 'function') {
-                    debugLog('🔄 Recarregando lista de chats após marcar como lida...');
-                    (loadChats || window.loadChats)();
+                // Atualiza a lista respeitando o estado de favoritos
+                if (showingFavorites) {
+                    if (typeof showFavorites === 'function') {
+                        debugLog('🔄 Recarregando favoritos após marcar como lida...');
+                        showFavorites();
+                    }
+                } else {
+                    if (typeof loadChats === 'function' || typeof window.loadChats === 'function') {
+                        debugLog('🔄 Recarregando lista de chats após marcar como lida...');
+                        (loadChats || window.loadChats)();
+                    }
                 }
             }, 500);
         } catch (error) {
@@ -981,13 +1005,21 @@ async function sendMessage() {
             debugLog('✅ Mensagem enviada com sucesso');
             
             // Atualiza a lista de chats para refletir a nova mensagem enviada
-            if (typeof loadChats === 'function' || typeof window.loadChats === 'function') {
-                debugLog('🔄 Atualizando lista de chats após enviar mensagem...');
-                // Aguarda um pouco para garantir que a mensagem foi processada pelo servidor
-                setTimeout(() => {
-                    (loadChats || window.loadChats)();
-                }, 500);
-            }
+            // Aguarda um pouco para garantir que a mensagem foi processada pelo servidor
+            setTimeout(() => {
+                // Atualiza a lista respeitando o estado de favoritos
+                if (showingFavorites) {
+                    if (typeof showFavorites === 'function') {
+                        debugLog('🔄 Atualizando favoritos após enviar mensagem...');
+                        showFavorites();
+                    }
+                } else {
+                    if (typeof loadChats === 'function' || typeof window.loadChats === 'function') {
+                        debugLog('🔄 Atualizando lista de chats após enviar mensagem...');
+                        (loadChats || window.loadChats)();
+                    }
+                }
+            }, 500);
         } else {
             throw new Error('Nenhum método disponível para enviar mensagem');
         }
@@ -1136,10 +1168,17 @@ function handleNewMessage(messageData) {
         debugLog('ℹ️ Mensagem não é do chat atual. Chat da mensagem:', chatId, 'Chat atual:', currentChatId);
     }
     
-    // Sempre atualiza a lista de chats para refletir a nova mensagem
-    if (typeof loadChats === 'function' || typeof window.loadChats === 'function') {
-        debugLog('🔄 Atualizando lista de chats...');
-        (loadChats || window.loadChats)();
+    // Atualiza a lista respeitando o estado de favoritos
+    if (showingFavorites) {
+        if (typeof showFavorites === 'function') {
+            debugLog('🔄 Atualizando favoritos após nova mensagem...');
+            showFavorites();
+        }
+    } else {
+        if (typeof loadChats === 'function' || typeof window.loadChats === 'function') {
+            debugLog('🔄 Atualizando lista de chats...');
+            (loadChats || window.loadChats)();
+        }
     }
 }
 
@@ -1513,9 +1552,19 @@ messageInput.onkeypress = (e) => {
             debugLog('🔄 Iniciando polling periódico da lista de chats (a cada 5s)');
             chatListPollingInterval = setInterval(() => {
                 const chatInterfaceVisible = chatInterfaceEl && chatInterfaceEl.style.display !== 'none';
-                if (chatInterfaceVisible && (typeof loadChats === 'function' || typeof window.loadChats === 'function')) {
-                    debugLog('🔄 Polling: atualizando lista de chats...');
-                    (loadChats || window.loadChats)();
+                if (chatInterfaceVisible) {
+                    // Verifica se está mostrando favoritos e atualiza adequadamente
+                    if (showingFavorites) {
+                        debugLog('🔄 Polling: atualizando lista de favoritos...');
+                        if (typeof showFavorites === 'function') {
+                            showFavorites();
+                        }
+                    } else {
+                        debugLog('🔄 Polling: atualizando lista de chats...');
+                        if (typeof loadChats === 'function' || typeof window.loadChats === 'function') {
+                            (loadChats || window.loadChats)();
+                        }
+                    }
                 } else {
                     // Para o polling se a interface não estiver visível
                     if (chatListPollingInterval) {
