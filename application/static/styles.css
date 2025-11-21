@@ -170,18 +170,52 @@ body {
     right: 0;
     bottom: 0;
     display: none;
+    flex-direction: column;
     background: #f0f2f5;
 }
 
 
 
 .chat-header {
-    background: #f0f2f584;
+    background: #f0f2f5;
     border-bottom: 1px solid #e4e6eb;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 10px 20px;
     flex-shrink: 0;
+    height: 60px;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex: 1;
+    min-width: 0;
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+}
+
+.user-info h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1c1e21;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.status-text {
+    font-size: 13px;
+    color: #65676b;
+    margin-top: 2px;
 }
 
 .header-btn {
@@ -201,8 +235,10 @@ body {
 /* Layout Principal */
 .chat-main {
     display: flex;
-    height: 100%;
+    flex: 1;
     width: 100%;
+    min-height: 0;
+    overflow: hidden;
 }
 
 

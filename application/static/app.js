@@ -381,13 +381,23 @@ window.loadChats = loadChats;
 debugLog('✅ window.loadChats definida:', typeof window.loadChats);
 
 async function selectChat(chatId) {
+    // Log sempre visível para debug
+    console.log('[APP] ⚡ selectChat chamado com:', chatId);
+    console.log('[APP] 📍 Stack trace:', new Error().stack);
     debugLog('selectChat chamado com:', chatId);
+    
+    if (!chatId) {
+        console.error('[APP] ❌ ERRO: chatId está vazio ou undefined!');
+        return;
+    }
     
     // Define chatModule no escopo da função - NUNCA use Chat diretamente!
     let chatModule = null;
     try {
         chatModule = getChatModule();
+        console.log('[APP] 📦 chatModule obtido:', !!chatModule);
     } catch (err) {
+        console.error('[APP] ❌ Erro ao obter chatModule:', err);
         debugError('Erro ao obter chatModule:', err);
     }
     
@@ -434,6 +444,41 @@ async function selectChat(chatId) {
                         // Verifica isGroup em _chat.isGroup ou isGroup direto
                         const isGroup = chatInfo._chat?.isGroup ?? chatInfo.isGroup;
                         debugLog('Chat info carregado:', { isGroup, name: chatInfo.name, has_chat: !!chatInfo._chat });
+                        
+                        // Atualiza o cabeçalho com o nome do chat/grupo
+                        const userNameEl = document.getElementById('user-name');
+                        const connectionStatusEl = document.getElementById('connection-status');
+                        
+                        console.log('[APP] 🔍 Tentando atualizar cabeçalho:', {
+                            userNameEl: !!userNameEl,
+                            chatInfoName: chatInfo.name,
+                            chatInfoKeys: Object.keys(chatInfo)
+                        });
+                        debugLog('🔍 Tentando atualizar cabeçalho:', {
+                            userNameEl: !!userNameEl,
+                            chatInfoName: chatInfo.name,
+                            chatInfoKeys: Object.keys(chatInfo)
+                        });
+                        
+                        if (userNameEl) {
+                            const chatName = chatInfo.name || chatInfo.id?._serialized?.split('@')[0] || chatInfo.id?.split('@')[0] || 'Desconhecido';
+                            userNameEl.textContent = chatName;
+                            console.log('[APP] ✅ Cabeçalho atualizado com nome:', chatName);
+                            debugLog('✅ Cabeçalho atualizado com nome:', chatName);
+                        } else {
+                            console.error('[APP] ❌ Elemento user-name não encontrado no DOM');
+                            debugError('❌ Elemento user-name não encontrado no DOM');
+                        }
+                        
+                        // Atualiza o status para indicar se é grupo ou conversa individual
+                        if (connectionStatusEl) {
+                            const isGroup = chatInfo._chat?.isGroup ?? chatInfo.isGroup;
+                            if (isGroup) {
+                                connectionStatusEl.textContent = 'Grupo';
+                            } else {
+                                connectionStatusEl.textContent = 'online';
+                            }
+                        }
                         
                         // Log de erro se isGroup não estiver definido
                         if (typeof isGroup === 'undefined') {
@@ -503,6 +548,31 @@ async function selectChat(chatId) {
             // Usa Chat.selectChat se disponível
             debugLog('✅ Usando Chat.selectChat...');
             await chatModule.selectChat(chatId, renderMessages);
+            
+            // Atualiza o cabeçalho após carregar mensagens (garantia final)
+            if (chatModule && chatModule.getCurrentChatInfo) {
+                const chatInfo = chatModule.getCurrentChatInfo();
+                console.log('[APP] 🔄 Tentando atualizar cabeçalho (final):', { hasChatInfo: !!chatInfo, chatInfoName: chatInfo?.name });
+                if (chatInfo) {
+                    const userNameEl = document.getElementById('user-name');
+                    const connectionStatusEl = document.getElementById('connection-status');
+                    console.log('[APP] 🔍 Elementos do cabeçalho:', { userNameEl: !!userNameEl, connectionStatusEl: !!connectionStatusEl });
+                    if (userNameEl) {
+                        const chatName = chatInfo.name || chatInfo.id?._serialized?.split('@')[0] || chatInfo.id?.split('@')[0] || 'Desconhecido';
+                        userNameEl.textContent = chatName;
+                        console.log('[APP] ✅ Cabeçalho atualizado (final) com nome:', chatName);
+                        debugLog('✅ Cabeçalho atualizado (final) com nome:', chatName);
+                    } else {
+                        console.error('[APP] ❌ Elemento user-name não encontrado (final)');
+                    }
+                    if (connectionStatusEl) {
+                        const isGroup = chatInfo._chat?.isGroup ?? chatInfo.isGroup;
+                        connectionStatusEl.textContent = isGroup ? 'Grupo' : 'online';
+                    }
+                } else {
+                    console.warn('[APP] ⚠️ chatInfo não disponível após carregar mensagens');
+                }
+            }
         } else {
             // Fallback para API
             debugLog('⚠️ Usando fallback API...');
@@ -510,6 +580,32 @@ async function selectChat(chatId) {
             if (apiModule && apiModule.getMessages) {
                 const messages = await apiModule.getMessages(session, chatId);
                 renderMessages(messages);
+                
+                // Tenta obter o nome do chat da lista de chats
+                if (apiModule && apiModule.getChats) {
+                    try {
+                        const chats = await apiModule.getChats(session);
+                        const chatInfo = chats.find(chat => {
+                            const id = chat.id?._serialized || chat.id;
+                            return id === chatId;
+                        });
+                        if (chatInfo) {
+                            const userNameEl = document.getElementById('user-name');
+                            const connectionStatusEl = document.getElementById('connection-status');
+                            if (userNameEl) {
+                                const chatName = chatInfo.name || chatInfo.id?._serialized?.split('@')[0] || chatInfo.id?.split('@')[0] || 'Desconhecido';
+                                userNameEl.textContent = chatName;
+                                debugLog('✅ Cabeçalho atualizado (fallback API) com nome:', chatName);
+                            }
+                            if (connectionStatusEl) {
+                                const isGroup = chatInfo._chat?.isGroup ?? chatInfo.isGroup;
+                                connectionStatusEl.textContent = isGroup ? 'Grupo' : 'online';
+                            }
+                        }
+    } catch (e) {
+                        debugError('Erro ao obter nome do chat:', e);
+                    }
+                }
             } else {
                 throw new Error('Nenhum método disponível para carregar mensagens');
             }
@@ -576,7 +672,7 @@ function renderMessages(messages) {
                 // Fallback para renderização simples
                 throw renderErr;
             }
-        } else {
+    } else {
             // Fallback: cria HTML simples
             // chatInfo já foi obtido acima, não precisa buscar novamente
             const isGroup = chatInfo && chatInfo.isGroup;
@@ -891,9 +987,9 @@ function showChat() {
         debugError('❌ WebSocketManager não disponível!', typeof window.WebSocketManager, typeof WebSocketManager);
     }
     if (typeof loadChats === 'function') {
-        loadChats();
-    }
-    
+    loadChats();
+}
+
     // Inicia polling quando a interface de chat é exibida
     if (typeof window.startChatListPolling === 'function') {
         setTimeout(() => {

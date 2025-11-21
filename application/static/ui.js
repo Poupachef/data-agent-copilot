@@ -121,11 +121,9 @@ const UI = {
     showChat() {
         const loginScreen = document.getElementById('login-screen');
         const chatInterface = document.getElementById('chat-interface');
-        const chatHeader = document.querySelector('.chat-header');
         
         if (loginScreen) loginScreen.style.display = 'none';
         if (chatInterface) chatInterface.style.display = 'flex';
-        if (chatHeader) chatHeader.style.display = 'none';
     },
 
     /**
