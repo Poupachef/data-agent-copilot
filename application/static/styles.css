@@ -737,20 +737,51 @@ body {
     background: #f0f2f5;
 }
 
-.last-message-text {
+.last-messages-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.last-message-item {
     padding: 10px;
     background: #f0f2f5;
     border-radius: 6px;
-    font-size: 14px;
-    color: #1c1e21;
     cursor: pointer;
-    word-wrap: break-word;
-    white-space: pre-wrap;
     transition: background 0.2s ease;
+    border-left: 3px solid transparent;
 }
 
-.last-message-text:hover {
+.last-message-item:hover {
     background: #e4e6eb;
+    border-left-color: #25d366;
+}
+
+.last-message-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 11px;
+    color: #65676b;
+}
+
+.last-message-type {
+    font-weight: 600;
+}
+
+.last-message-time {
+    color: #8a8d91;
+}
+
+.last-message-item-text {
+    font-size: 14px;
+    color: #1c1e21;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    line-height: 1.4;
 }
 
 .message-input-wrapper {

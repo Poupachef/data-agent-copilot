@@ -31,8 +31,8 @@ if (DEBUG) {
 let phone = localStorage.getItem('phone') || '';
 let session = 'default';
 
-// Armazena a última mensagem da conversa atual
-let lastMessage = null;
+// Armazena as últimas 4 mensagens da conversa atual
+let lastMessages = [];
 
 // Funções auxiliares para acessar módulos de forma segura
 // Versão: 2.0 - Todas as referências diretas removidas
@@ -449,12 +449,12 @@ function renderMessages(messages) {
         
         debugLog(`Mensagens ordenadas: ${messages.length} -> ${sortedMessages.length}`);
         
-        // Armazena a última mensagem (a mais recente)
+        // Armazena as últimas 4 mensagens (as mais recentes)
         if (sortedMessages.length > 0) {
-            lastMessage = sortedMessages[sortedMessages.length - 1];
-            debugLog('Última mensagem armazenada:', lastMessage);
+            lastMessages = sortedMessages.slice(-4); // Pega as últimas 4 mensagens
+            debugLog('Últimas 4 mensagens armazenadas:', lastMessages);
         } else {
-            lastMessage = null;
+            lastMessages = [];
         }
         
         // Tenta usar Chat.createMessageHtml, senão cria HTML simples
@@ -566,14 +566,19 @@ async function sendMessage() {
     const message = messageInputEl.value.trim();
     if (!message) return;
     
-    // Atualiza a última mensagem antes de enviar
-    lastMessage = {
+    // Adiciona a mensagem enviada ao array das últimas 4 mensagens
+    const sentMessage = {
         body: message,
         fromMe: true,
         timestamp: Math.floor(Date.now() / 1000),
         hasMedia: false
     };
-    debugLog('Última mensagem atualizada (mensagem enviada):', lastMessage);
+    lastMessages.push(sentMessage);
+    // Mantém apenas as últimas 4 mensagens
+    if (lastMessages.length > 4) {
+        lastMessages = lastMessages.slice(-4);
+    }
+    debugLog('Últimas mensagens atualizadas (mensagem enviada):', lastMessages);
     
     messageInputEl.value = '';
     
@@ -677,9 +682,13 @@ function handleNewMessage(messageData) {
             media: messageData.media
         };
         
-        // Atualiza a última mensagem
-        lastMessage = messageObj;
-        debugLog('Última mensagem atualizada (nova mensagem recebida):', lastMessage);
+        // Adiciona a nova mensagem ao array das últimas 4 mensagens
+        lastMessages.push(messageObj);
+        // Mantém apenas as últimas 4 mensagens
+        if (lastMessages.length > 4) {
+            lastMessages = lastMessages.slice(-4);
+        }
+        debugLog('Últimas mensagens atualizadas (nova mensagem recebida):', lastMessages);
         
         const chatMessagesEl = document.getElementById('chat-messages');
         if (chatMessagesEl) {
@@ -744,9 +753,9 @@ document.getElementById('search-input').oninput = (e) => {
     });
 };
 
-// Funcionalidade de última mensagem
+// Funcionalidade de últimas mensagens
 function showLastMessage() {
-    if (!lastMessage) {
+    if (!lastMessages || lastMessages.length === 0) {
         const uiModule = getUIModule();
         if (uiModule && uiModule.notify) {
             uiModule.notify('Nenhuma mensagem disponível', 'info');
@@ -755,29 +764,52 @@ function showLastMessage() {
     }
     
     const lastMessageBox = document.getElementById('last-message-box');
-    const lastMessageText = document.getElementById('last-message-text');
+    const lastMessagesContainer = document.getElementById('last-messages-container');
     
-    if (!lastMessageBox || !lastMessageText) {
-        debugError('Elementos da caixa de última mensagem não encontrados');
+    if (!lastMessageBox || !lastMessagesContainer) {
+        debugError('Elementos da caixa de últimas mensagens não encontrados');
         return;
     }
     
-    // Extrai o texto da mensagem
-    const messageText = lastMessage.body || lastMessage.text || '';
+    // Limpa o container
+    lastMessagesContainer.innerHTML = '';
     
-    if (!messageText) {
-        const uiModule = getUIModule();
-        if (uiModule && uiModule.notify) {
-            uiModule.notify('A última mensagem não contém texto', 'info');
+    // Cria elementos para cada uma das últimas 4 mensagens (da mais antiga para a mais recente)
+    lastMessages.forEach((msg, index) => {
+        const messageText = msg.body || msg.text || '';
+        if (!messageText) return; // Pula mensagens sem texto
+        
+        const messageItem = document.createElement('div');
+        messageItem.className = 'last-message-item';
+        messageItem.dataset.index = index;
+        
+        // Adiciona indicador visual se foi enviada ou recebida
+        const messageType = msg.fromMe ? 'enviada' : 'recebida';
+        const messageTypeIcon = msg.fromMe ? '📤' : '📥';
+        
+        // Formata o tempo se disponível
+        let timeText = '';
+        if (msg.timestamp) {
+            const date = new Date(msg.timestamp * 1000);
+            timeText = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         }
-        return;
-    }
+        
+        messageItem.innerHTML = `
+            <div class="last-message-item-header">
+                <span class="last-message-type">${messageTypeIcon} ${messageType}</span>
+                ${timeText ? `<span class="last-message-time">${timeText}</span>` : ''}
+            </div>
+            <div class="last-message-item-text">${messageText}</div>
+        `;
+        
+        // Adiciona evento de clique para copiar
+        messageItem.addEventListener('click', () => copyMessageToInput(messageText));
+        
+        lastMessagesContainer.appendChild(messageItem);
+    });
     
-    // Mostra o texto da mensagem
-    lastMessageText.textContent = messageText;
     lastMessageBox.style.display = 'block';
-    
-    debugLog('Caixa de última mensagem exibida:', messageText);
+    debugLog('Caixa de últimas mensagens exibida:', lastMessages.length, 'mensagens');
 }
 
 function hideLastMessage() {
@@ -787,12 +819,7 @@ function hideLastMessage() {
     }
 }
 
-function copyLastMessageToInput() {
-    if (!lastMessage) {
-        return;
-    }
-    
-    const messageText = lastMessage.body || lastMessage.text || '';
+function copyMessageToInput(messageText) {
     if (!messageText) {
         return;
     }
@@ -818,10 +845,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (ui && ui.initNotificationStyles) ui.initNotificationStyles();
     }
     
-    // Event listeners para última mensagem
+    // Event listeners para últimas mensagens
     const lastMessageBtn = document.getElementById('last-message-btn');
     const closeLastMessageBtn = document.getElementById('close-last-message-btn');
-    const lastMessageText = document.getElementById('last-message-text');
     
     if (lastMessageBtn) {
         lastMessageBtn.addEventListener('click', showLastMessage);
@@ -829,10 +855,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (closeLastMessageBtn) {
         closeLastMessageBtn.addEventListener('click', hideLastMessage);
-    }
-    
-    if (lastMessageText) {
-        lastMessageText.addEventListener('click', copyLastMessageToInput);
     }
     
     // Fecha a caixa ao clicar fora dela
