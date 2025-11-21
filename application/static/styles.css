@@ -391,6 +391,68 @@ body {
     border-bottom: 1px solid #f0f2f5;
     transition: background-color 0.2s ease;
     background: white; /* Cor padrão */
+    position: relative;
+}
+
+.chat-avatar-container {
+    position: relative;
+    margin-right: 15px;
+    flex-shrink: 0;
+}
+
+.chat-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.favorite-star {
+    position: absolute;
+    left: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: white;
+    border: 1px solid #e4e6eb;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 0;
+    margin: 0;
+    font-size: 12px;
+    line-height: 1;
+}
+
+.chat-item:hover .favorite-star {
+    display: flex;
+}
+
+.favorite-star:hover {
+    background: #f0f2f5;
+    transform: translateY(-50%) scale(1.1);
+}
+
+.favorite-star.active {
+    display: flex;
+    background: #ffd700;
+    border-color: #ffd700;
+    color: #fff;
+}
+
+.favorite-star.active i {
+    color: #fff;
+}
+
+.favorite-star:not(.active) i {
+    color: #65676b;
 }
 
 /* Conversa não lida: fundo rosa escuro */
@@ -421,15 +483,6 @@ body {
 /* Conversa aberta: fundo branco - DEVE VIR POR ÚLTIMO PARA TER PRIORIDADE */
 .chat-item.active {
     background: white !important;
-}
-
-.chat-avatar {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    overflow: hidden;
-    margin-right: 15px;
-    flex-shrink: 0;
 }
 
 .chat-avatar img {

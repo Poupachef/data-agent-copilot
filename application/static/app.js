@@ -34,6 +34,74 @@ let session = 'default';
 // Armazena as últimas 4 mensagens da conversa atual
 let lastMessages = [];
 
+// Gerenciamento de favoritos
+const Favorites = {
+    /**
+     * Obtém lista de favoritos do localStorage.
+     */
+    getFavorites() {
+        try {
+            const favorites = localStorage.getItem('chatFavorites');
+            return favorites ? JSON.parse(favorites) : [];
+        } catch (e) {
+            console.error('Erro ao obter favoritos:', e);
+            return [];
+        }
+    },
+    
+    /**
+     * Adiciona um chat aos favoritos.
+     */
+    addFavorite(chatId) {
+        const favorites = this.getFavorites();
+        if (!favorites.includes(chatId)) {
+            favorites.push(chatId);
+            localStorage.setItem('chatFavorites', JSON.stringify(favorites));
+            debugLog('✅ Favorito adicionado:', chatId);
+            return true;
+        }
+        return false;
+    },
+    
+    /**
+     * Remove um chat dos favoritos.
+     */
+    removeFavorite(chatId) {
+        const favorites = this.getFavorites();
+        const index = favorites.indexOf(chatId);
+        if (index > -1) {
+            favorites.splice(index, 1);
+            localStorage.setItem('chatFavorites', JSON.stringify(favorites));
+            debugLog('✅ Favorito removido:', chatId);
+            return true;
+        }
+        return false;
+    },
+    
+    /**
+     * Verifica se um chat é favorito.
+     */
+    isFavorite(chatId) {
+        return this.getFavorites().includes(chatId);
+    },
+    
+    /**
+     * Alterna o status de favorito de um chat.
+     */
+    toggleFavorite(chatId) {
+        if (this.isFavorite(chatId)) {
+            this.removeFavorite(chatId);
+            return false;
+        } else {
+            this.addFavorite(chatId);
+            return true;
+        }
+    }
+};
+
+// Expõe globalmente
+window.Favorites = Favorites;
+
 // Funções auxiliares para acessar módulos de forma segura
 // Versão: 2.0 - Todas as referências diretas removidas
 function getUIModule() {
@@ -361,6 +429,19 @@ async function loadChats() {
         if (chatModule.renderChats) {
             chatListEl.innerHTML = chatModule.renderChats(chats, 'selectChat');
             debugLog('✅ Chats renderizados com sucesso!');
+            
+            // Adiciona event listeners para as estrelas de favorito
+            chatListEl.querySelectorAll('.favorite-star').forEach(star => {
+                const chatId = star.closest('.chat-item')?.getAttribute('data-chat-id');
+                if (chatId) {
+                    star.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        if (typeof window.toggleFavorite === 'function') {
+                            window.toggleFavorite(chatId);
+                        }
+                    });
+                }
+            });
     } else {
             if (DEBUG) console.warn('[APP] ⚠️ Chat.renderChats não disponível');
         }
@@ -968,7 +1049,7 @@ function handleNewMessage(messageData) {
             chatMessagesEl.insertAdjacentHTML('beforeend', messageHtml);
             chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
             debugLog('✅ Mensagem adicionada ao DOM com sucesso!');
-        } else {
+    } else {
             debugError('❌ Elemento chat-messages não encontrado!');
         }
     } else {
@@ -1017,6 +1098,101 @@ function showChat() {
 
 // Torna showChat global
 window.showChat = showChat;
+
+// Variável para controlar se está mostrando favoritos
+let showingFavorites = false;
+
+// Função global para alternar favorito
+window.toggleFavorite = function(chatId) {
+    if (typeof window.Favorites !== 'undefined') {
+        const isNowFavorite = window.Favorites.toggleFavorite(chatId);
+        debugLog(`Favorito ${isNowFavorite ? 'adicionado' : 'removido'}:`, chatId);
+        // Recarrega a lista de chats para atualizar a UI
+        // Se estiver mostrando favoritos, recarrega favoritos; senão, recarrega todas
+        if (showingFavorites) {
+            showFavorites();
+        } else {
+            if (typeof loadChats === 'function' || typeof window.loadChats === 'function') {
+                (loadChats || window.loadChats)();
+            }
+        }
+    }
+};
+
+// Função para mostrar apenas favoritos
+async function showFavorites() {
+    showingFavorites = true;
+    const chatsBtn = document.getElementById('chats-btn');
+    const favoritesBtn = document.getElementById('favorites-btn');
+    const sidebarTitle = document.getElementById('sidebar-title');
+    
+    if (chatsBtn) chatsBtn.classList.remove('active');
+    if (favoritesBtn) favoritesBtn.classList.add('active');
+    if (sidebarTitle) sidebarTitle.textContent = 'Favoritos';
+    
+    // Carrega todos os chats e filtra apenas os favoritos
+    const apiModule = (typeof API !== 'undefined' ? API : null) || (typeof window.API !== 'undefined' ? window.API : null);
+    if (apiModule && apiModule.getChats) {
+        try {
+            const allChats = await apiModule.getChats(session);
+            const favorites = typeof window.Favorites !== 'undefined' ? window.Favorites.getFavorites() : [];
+            const favoriteChats = allChats.filter(chat => {
+                const chatId = chat.id?._serialized || chat.id;
+                return favorites.includes(chatId);
+            });
+            
+            const chatModule = getChatModule();
+            const chatListEl = document.getElementById('chat-list');
+            if (chatListEl && chatModule && chatModule.renderChats) {
+                chatListEl.innerHTML = chatModule.renderChats(favoriteChats, 'selectChat');
+                debugLog('✅ Favoritos renderizados:', favoriteChats.length);
+                
+                // Adiciona event listeners para os chat-items e estrelas de favorito
+                chatListEl.querySelectorAll('.chat-item').forEach(item => {
+                    const chatId = item.getAttribute('data-chat-id');
+                    if (chatId) {
+                        // Event listener para selecionar o chat
+                        item.addEventListener('click', () => {
+                            if (typeof window.selectChat === 'function') {
+                                window.selectChat(chatId);
+                            }
+                        });
+                        
+                        // Event listener para a estrela de favorito
+                        const star = item.querySelector('.favorite-star');
+                        if (star) {
+                            star.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                if (typeof window.toggleFavorite === 'function') {
+                                    window.toggleFavorite(chatId);
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+        } catch (error) {
+            debugError('Erro ao carregar favoritos:', error);
+        }
+    }
+}
+
+// Função para mostrar todas as conversas
+async function showAllChats() {
+    showingFavorites = false;
+    const chatsBtn = document.getElementById('chats-btn');
+    const favoritesBtn = document.getElementById('favorites-btn');
+    const sidebarTitle = document.getElementById('sidebar-title');
+    
+    if (chatsBtn) chatsBtn.classList.add('active');
+    if (favoritesBtn) favoritesBtn.classList.remove('active');
+    if (sidebarTitle) sidebarTitle.textContent = 'Conversas';
+    
+    // Recarrega todas as conversas
+    if (typeof loadChats === 'function' || typeof window.loadChats === 'function') {
+        (loadChats || window.loadChats)();
+    }
+}
 
 function showLogin() {
     const ui = getUIModule();
@@ -1201,6 +1377,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (createSessionBtn) createSessionBtn.onclick = createSession;
     if (deleteSessionBtn) deleteSessionBtn.onclick = deleteSession;
     if (refreshSessionBtn) refreshSessionBtn.onclick = checkSessionStatus;
+    
+    // Event listeners para favoritos
+    const chatsBtn = document.getElementById('chats-btn');
+    const favoritesBtn = document.getElementById('favorites-btn');
+    if (chatsBtn) chatsBtn.onclick = showAllChats;
+    if (favoritesBtn) favoritesBtn.onclick = showFavorites;
     
     if (messageInput) {
 messageInput.onkeypress = (e) => {

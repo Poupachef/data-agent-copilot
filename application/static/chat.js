@@ -438,13 +438,26 @@ const Chat = {
             }
             }
             
+            // Verifica se é favorito
+            const isFavorite = typeof window.Favorites !== 'undefined' && window.Favorites.isFavorite(chatId);
+            
             // Monta as classes: active sempre por último para ter prioridade
-            const classes = ['chat-item', statusClass, isActive ? 'active' : ''].filter(c => c).join(' ');
+            const classes = ['chat-item', statusClass, isActive ? 'active' : '', isFavorite ? 'favorite' : ''].filter(c => c).join(' ');
+            
+            // Escapa o chatId para uso seguro em atributos HTML
+            const escapedChatId = chatId.replace(/'/g, "\\'").replace(/"/g, '&quot;');
             
             return `
-                <div class="${classes}" data-chat-id="${chatId}" onclick="window.selectChat('${chatId}'); event.stopPropagation(); return false;">
-                    <div class="chat-avatar">
-                        <div class="avatar-placeholder">${avatarIcon}</div>
+                <div class="${classes}" data-chat-id="${escapedChatId}">
+                    <div class="chat-avatar-container">
+                        <div class="chat-avatar">
+                            <div class="avatar-placeholder">${avatarIcon}</div>
+                        </div>
+                        <button class="favorite-star ${isFavorite ? 'active' : ''}" 
+                                data-chat-id="${escapedChatId}"
+                                title="${isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}">
+                            <i class="fas fa-star"></i>
+                        </button>
                     </div>
                     <div class="chat-info">
                         <div class="chat-header">
